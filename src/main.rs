@@ -1,5 +1,5 @@
 pub mod cli;
-pub mod server;
+pub mod net;
 
 use bevy::{
     input::mouse::{MouseScrollUnit, MouseWheel},
@@ -7,7 +7,7 @@ use bevy::{
 };
 use clap::Parser;
 use cli::Cli;
-use server::ServerPlugin;
+use net::NetPlugin;
 
 #[derive(Component)]
 struct Player {
@@ -27,7 +27,7 @@ fn main() {
                 }),
                 ..default()
             }),
-            ServerPlugin,
+            NetPlugin,
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
