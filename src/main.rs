@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod server;
 
 use bevy::{
     input::mouse::{MouseScrollUnit, MouseWheel},
@@ -6,6 +7,7 @@ use bevy::{
 };
 use clap::Parser;
 use cli::Cli;
+use server::ServerPlugin;
 
 #[derive(Component)]
 struct Player {
@@ -16,7 +18,18 @@ fn main() {
     let Cli { server: _ } = Cli::parse();
 
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    fit_canvas_to_parent: true,
+                    prevent_default_event_handling: false,
+                    ..default()
+                }),
+                ..default()
+            }),
+            ServerPlugin,
+        ))
+        .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
         .add_systems(Update, input)
         .run();
