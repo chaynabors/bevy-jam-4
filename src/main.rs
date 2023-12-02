@@ -27,7 +27,10 @@ fn main() {
                 }),
                 ..default()
             }),
-            NetPlugin,
+            NetPlugin {
+                room: "test".into(),
+                players: 2,
+            },
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)

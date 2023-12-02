@@ -10,20 +10,37 @@ use bevy_matchbox::{
 
 type Config = bevy_ggrs::GgrsConfig<u8, PeerId>;
 
-pub struct NetPlugin;
+#[derive(Debug, Clone, Resource)]
+pub struct NetData {
+    room: String,
+    players: u8,
+}
+
+#[derive(Debug, Clone)]
+pub struct NetPlugin {
+    pub room: String,
+    pub players: u8,
+}
 
 impl Plugin for NetPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(GgrsPlugin::<Config>::default())
-            .rollback_component_with_clone::<Transform>()
-            .add_systems(Startup, start_server)
-            .add_systems(Update, wait_for_players);
+        app.insert_resource(NetData {
+            room: self.room.clone(),
+            players: self.players,
+        })
+        .add_plugins(GgrsPlugin::<Config>::default())
+        .rollback_component_with_clone::<Transform>()
+        .add_systems(Startup, start_server)
+        .add_systems(Update, wait_for_players);
     }
 }
 
-fn start_server(mut commands: Commands) {
-    let room_url = "wss://bevy-jam-4.fly.dev/extreme_bevy?next=2";
-    info!("connecting to matchbox server: {room_url}");
+fn start_server(mut commands: Commands, net_data: Res<NetData>) {
+    let room_url = format!(
+        "wss://bevy-jam-4.fly.dev/{}?next={}",
+        net_data.room, net_data.players
+    );
+    info!(%room_url, "connecting to matchbox server");
     commands.insert_resource(MatchboxSocket::new_ggrs(room_url));
 }
 
