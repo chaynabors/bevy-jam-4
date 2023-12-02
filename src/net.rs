@@ -8,7 +8,7 @@ use bevy_matchbox::{
     MatchboxSocket,
 };
 
-type Config = bevy_ggrs::GgrsConfig<u8, PeerId>;
+pub type Config = bevy_ggrs::GgrsConfig<u32, PeerId>;
 
 #[derive(Debug, Clone, Resource)]
 pub struct NetData {

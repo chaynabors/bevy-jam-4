@@ -1,4 +1,5 @@
 use bevy::{math::vec3, prelude::*};
+use bevy_ggrs::LocalPlayers;
 
 use crate::player::Player;
 
@@ -9,11 +10,14 @@ pub fn spawn_camera(commands: &mut Commands) -> Entity {
 pub fn update_camera(
     mut camera: Query<&mut Transform, With<Camera>>,
     players: Query<(&Player, &Transform), Without<Camera>>,
+    local_players: Res<LocalPlayers>,
 ) {
-    if let Some(player) = players.iter().find(|p| p.0.id == 0) {
+    let player = local_players.0.first().unwrap();
+
+    if let Some((_, transform)) = players.iter().find(|(p, _)| p.id == *player) {
         *camera.single_mut() = Transform::from_translation(
-            player.1.translation + vec3(0.0, 1.0, 1.0).normalize() * 10.0,
+            transform.translation + vec3(0.0, 1.0, 1.0).normalize() * 10.0,
         )
-        .looking_at(player.1.translation, Vec3::Y);
+        .looking_at(transform.translation, Vec3::Y);
     }
 }

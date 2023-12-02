@@ -1,13 +1,19 @@
 use bevy::{
-    math::{vec2, vec3},
+    math::vec3,
     pbr::{NotShadowCaster, NotShadowReceiver},
     prelude::*,
+};
+use bevy_ggrs::{AddRollbackCommandExtension, PlayerInputs};
+
+use crate::{
+    input::{INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT, INPUT_UP},
+    net::Config,
 };
 
 pub fn spawn_player(
     player: Player,
     transform: Transform,
-    mut commands: Commands,
+    commands: &mut Commands,
     mesh: Handle<Mesh>,
     material: Handle<StandardMaterial>,
 ) -> Entity {
@@ -23,12 +29,13 @@ pub fn spawn_player(
             not_shadow_caster: NotShadowCaster,
             not_shadow_receiver: NotShadowReceiver,
         })
+        .add_rollback()
         .id()
 }
 
 #[derive(Component)]
 pub struct Player {
-    pub id: u8,
+    pub id: usize,
     pub speed: f32,
 }
 
@@ -41,21 +48,32 @@ pub struct PlayerBundle {
 }
 
 pub fn update_player(
-    mut player: Query<(&mut Player, &mut Transform)>,
+    mut player: Query<(&Player, &mut Transform)>,
     time: Res<Time>,
-    keyboard_input: Res<Input<KeyCode>>,
+    inputs: Res<PlayerInputs<Config>>,
 ) {
-    if let Some(mut player) = player.iter_mut().find(|p| p.0.id == 0) {
+    for (player, mut transform) in player.iter_mut() {
+        let (input, _) = inputs[player.id];
         let dt = time.delta_seconds();
 
-        let dir = vec2(
-            keyboard_input.pressed(KeyCode::D) as u32 as f32
-                - keyboard_input.pressed(KeyCode::A) as u32 as f32,
-            keyboard_input.pressed(KeyCode::W) as u32 as f32
-                - keyboard_input.pressed(KeyCode::S) as u32 as f32,
-        )
-        .clamp_length_max(1.0);
+        let mut direction = Vec2::ZERO;
 
-        player.1.translation += vec3(dir.x, 0.0, dir.y) * player.0.speed * dt;
+        if input & INPUT_UP != 0 {
+            direction.y -= 1.;
+        }
+        if input & INPUT_DOWN != 0 {
+            direction.y += 1.;
+        }
+        if input & INPUT_RIGHT != 0 {
+            direction.x += 1.;
+        }
+        if input & INPUT_LEFT != 0 {
+            direction.x -= 1.;
+        }
+        if direction == Vec2::ZERO {
+            continue;
+        }
+
+        transform.translation += vec3(direction.x, 0.0, direction.y) * player.speed * dt;
     }
 }
