@@ -1,7 +1,11 @@
+pub mod cli;
+
 use bevy::{
     input::mouse::{MouseScrollUnit, MouseWheel},
     prelude::*,
 };
+use clap::Parser;
+use cli::Cli;
 
 #[derive(Component)]
 struct Player {
@@ -9,6 +13,8 @@ struct Player {
 }
 
 fn main() {
+    let Cli { server: _ } = Cli::parse();
+
     App::new()
         .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
