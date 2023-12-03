@@ -98,7 +98,7 @@ fn setup(
     });
 
     // Player
-    let player_mesh = server.load("player.glb#Mesh0/Primitive0");
+    let player_mesh = meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap());
     let player_1_material = materials.add(StandardMaterial {
         unlit: true,
         ..default()

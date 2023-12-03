@@ -4,7 +4,7 @@ use crate::player::Player;
 
 const MAX_ENEMY_COUNT: usize = 1024;
 const ENEMY_SPEED: f32 = 4.2;
-const ARENA_SIZE: f32 = 15.0;
+const ARENA_SIZE: f32 = 12.0;
 
 #[derive(Bundle, Clone)]
 struct EnemyBundle {
