@@ -10,6 +10,21 @@ use crate::{
     net::Config,
 };
 
+const PLAYER_SPEED: f32 = 6.1;
+
+#[derive(Bundle)]
+pub struct PlayerBundle {
+    player: Player,
+    pbr: PbrBundle,
+    not_shadow_caster: NotShadowCaster,
+    not_shadow_receiver: NotShadowReceiver,
+}
+
+#[derive(Component)]
+pub struct Player {
+    pub id: usize,
+}
+
 pub fn spawn_player(
     player: Player,
     transform: Transform,
@@ -31,20 +46,6 @@ pub fn spawn_player(
         })
         .add_rollback()
         .id()
-}
-
-#[derive(Component)]
-pub struct Player {
-    pub id: usize,
-    pub speed: f32,
-}
-
-#[derive(Bundle)]
-pub struct PlayerBundle {
-    player: Player,
-    pbr: PbrBundle,
-    not_shadow_caster: NotShadowCaster,
-    not_shadow_receiver: NotShadowReceiver,
 }
 
 pub fn update_player(
@@ -70,10 +71,9 @@ pub fn update_player(
         if input & INPUT_LEFT != 0 {
             direction.x -= 1.;
         }
-        if direction == Vec2::ZERO {
-            continue;
-        }
 
-        transform.translation += vec3(direction.x, 0.0, direction.y) * player.speed * dt;
+        direction = direction.clamp_length_max(1.0);
+
+        transform.translation += vec3(direction.x, 0.0, direction.y) * PLAYER_SPEED * dt;
     }
 }

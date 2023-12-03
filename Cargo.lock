@@ -684,6 +684,7 @@ dependencies = [
  "bevy_ggrs",
  "bevy_matchbox",
  "clap",
+ "fastrand 2.0.1",
 ]
 
 [[package]]

@@ -16,6 +16,7 @@ bevy = { version = "0.12.1", features = ["dynamic_linking"] }
 bevy_ggrs = { version = "0.14.0", features = ["wasm-bindgen"] }
 bevy_matchbox = { version = "0.8.0", features = ["ggrs"] }
 clap = { version = "4.4.10", features = ["derive"] }
+fastrand = "2.0.1"
 
 [profile.dev]
 opt-level = 1
