@@ -48,19 +48,32 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut server: Res<AssetServer>,
+    server: Res<AssetServer>,
 ) {
-    let player_mesh = meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap());
-    let player_1_material = materials.add(StandardMaterial {
-        base_color: Color::BLUE,
+    // Floor
+    let floor_mesh: Handle<Mesh> = server.load("floor.glb#Mesh0/Primitive0");
+    let floor_material = materials.add(StandardMaterial {
         unlit: true,
+        fog_enabled: true,
         ..default()
+    });
+
+    commands.spawn(PbrBundle {
+        mesh: floor_mesh,
+        material: floor_material,
+        ..Default::default()
     });
 
     // Camera
     spawn_camera(&mut commands);
 
-    // // Player
+    // Player
+    let player_mesh = meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap());
+    let player_1_material = materials.add(StandardMaterial {
+        unlit: true,
+        ..default()
+    });
+
     spawn_player(
         Player {},
         Transform::default(),
@@ -72,7 +85,6 @@ fn setup(
 
     let enemy_mesh: Handle<Mesh> = server.load("enemy1.glb#Mesh0/Primitive0");
     let enemy_material = materials.add(StandardMaterial {
-        base_color: Color::MAROON,
         unlit: true,
         ..default()
     });

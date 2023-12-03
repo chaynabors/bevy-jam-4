@@ -78,7 +78,7 @@ pub fn update_enemy_transforms(
         }
 
         if distance < 0.5 {
-            return;
+            continue;
         }
 
         enemy.translation += direction * ENEMY_SPEED * dt;
