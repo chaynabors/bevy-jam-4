@@ -18,7 +18,7 @@ pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(BulletTimer(Timer::from_seconds(0.25, TimerMode::Once)))
+        app.insert_resource(BulletTimer(Timer::from_seconds(0.00001, TimerMode::Once)))
             .add_systems(PreUpdate, (read_input, read_bullet_input.after(read_input)));
     }
 }
@@ -49,7 +49,7 @@ fn read_input(
 
     if direction != Vec2::ZERO {
         transform.translation += vec3(direction.x, 0.0, direction.y) * PLAYER_SPEED * dt;
-
+        transform.look_to(vec3(direction.x, 0.0, direction.y), Vec3::Y);
         tx_net_event.send(NetEvent::PlayerUpdate(transform.translation));
     }
 }
@@ -88,7 +88,7 @@ fn read_bullet_input(
 
         let direction = (global_cursor - transform.translation).normalize();
 
-        let spread = 0.15;
+        let spread = 0.50;
 
         let position = vec2(transform.translation.x, transform.translation.z);
 

@@ -86,7 +86,3 @@ pub fn update_enemy_transforms(
         enemy.look_to(direction, Vec3::Y);
     }
 }
-
-pub fn resolve_collisions(mut enemies: Query<&mut Transform, With<Enemy>>,) {
-    
-}

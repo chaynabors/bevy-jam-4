@@ -1,5 +1,5 @@
 use bevy::{
-    math::{vec2, vec3},
+    math::vec3,
     prelude::*,
 };
 
