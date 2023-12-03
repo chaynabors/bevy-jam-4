@@ -1,10 +1,10 @@
-use bevy::{prelude::*, math::vec3};
+use bevy::{math::vec3, prelude::*};
 
 use crate::player::Player;
 
 const MAX_ENEMY_COUNT: usize = 1024;
 const ENEMY_SPEED: f32 = 4.2;
-const ARENA_SIZE: f32 = 10.0;
+const ARENA_SIZE: f32 = 15.0;
 
 #[derive(Bundle, Clone)]
 struct EnemyBundle {
@@ -18,11 +18,14 @@ pub struct Enemy;
 #[derive(Resource)]
 pub struct SpawnTimer(pub Timer);
 
-pub fn setup(
-    mut commands: Commands,
-    mesh: Handle<Mesh>,
-    material: Handle<StandardMaterial>) {
-        commands.spawn_batch(std::iter::repeat(EnemyBundle {
+#[derive(Resource)]
+pub struct SpawnGeneation(pub usize);
+
+pub fn setup(commands: &mut Commands, mesh: Handle<Mesh>, material: Handle<StandardMaterial>) {
+    commands.insert_resource(SpawnGeneation(0));
+    commands.insert_resource(SpawnTimer(Timer::from_seconds(5.0, TimerMode::Once)));
+    commands.spawn_batch(
+        std::iter::repeat(EnemyBundle {
             enemy: Enemy,
             pbr: PbrBundle {
                 mesh,
@@ -31,12 +34,15 @@ pub fn setup(
                 visibility: Visibility::Hidden,
                 ..default()
             },
-        }).take(MAX_ENEMY_COUNT))
+        })
+        .take(MAX_ENEMY_COUNT),
+    )
 }
 
 pub fn spawn_wave(
-    mut enemies: Query<(&mut Transform, &mut Visibility), With<Enemy>>,
     time: Res<Time>,
+    mut spawn_generation: ResMut<SpawnGeneation>,
+    mut enemies: Query<(&mut Transform, &mut Visibility), With<Enemy>>,
     mut spawn_timer: ResMut<SpawnTimer>,
 ) {
     if !spawn_timer.0.just_finished() {
@@ -45,11 +51,14 @@ pub fn spawn_wave(
     }
     spawn_timer.0.reset();
 
-    let mut spawn_count = 10;
+    spawn_generation.0 += 1;
+
+    let mut spawn_count = 5 * spawn_generation.0;
     for mut enemy in enemies.iter_mut() {
         if *enemy.1 == Visibility::Hidden {
             *enemy.1 = Visibility::Visible;
-            enemy.0.translation = vec3(fastrand::f32() - 0.5, 0.0, fastrand::f32() - 0.5).normalize() * ARENA_SIZE;
+            enemy.0.translation =
+                vec3(fastrand::f32() - 0.5, 0.0, fastrand::f32() - 0.5).normalize() * ARENA_SIZE;
             spawn_count -= 1;
         }
 
@@ -86,3 +95,5 @@ pub fn update_enemy_transforms(
         enemy.look_to(direction, Vec3::Y);
     }
 }
+
+pub fn resolve_collisions(mut enemies: Query<&mut Transform, With<Enemy>>) {}

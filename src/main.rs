@@ -1,20 +1,23 @@
-pub mod bullet;
+mod bullet;
 mod camera;
-pub mod cli;
+mod cli;
 mod enemy;
-pub mod input;
+mod input;
 mod net;
 mod player;
+mod powerups;
 
-use bevy::prelude::*;
+use std::f32::consts::PI;
+
+use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bullet::BulletPlugin;
 use camera::spawn_camera;
 use clap::Parser;
 use cli::Cli;
-use enemy::SpawnTimer;
 use input::InputPlugin;
 use net::NetPlugin;
 use player::{spawn_player, Player};
+use powerups::PowerupPlugin;
 
 fn main() {
     let Cli { server: _ } = Cli::parse();
@@ -33,9 +36,9 @@ fn main() {
             },
             BulletPlugin,
             InputPlugin,
+            PowerupPlugin,
         ))
         .insert_resource(ClearColor(Color::BLACK))
-        .insert_resource(SpawnTimer(Timer::from_seconds(5.0, TimerMode::Once)))
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -71,6 +74,29 @@ fn setup(
     // Camera
     spawn_camera(&mut commands);
 
+    // Sun
+    commands.spawn(DirectionalLightBundle {
+        directional_light: DirectionalLight {
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform {
+            translation: Vec3::new(0.0, 2.0, 0.0),
+            rotation: Quat::from_rotation_x(-PI / 4.),
+            ..default()
+        },
+        // The default cascade config is designed to handle large scenes.
+        // As this example has a much smaller world, we can tighten the shadow
+        // bounds for better visual quality.
+        cascade_shadow_config: CascadeShadowConfigBuilder {
+            first_cascade_far_bound: 4.0,
+            maximum_distance: 10.0,
+            ..default()
+        }
+        .into(),
+        ..default()
+    });
+
     // Player
     let player_mesh = server.load("player.glb#Mesh0/Primitive0");
     let player_1_material = materials.add(StandardMaterial {
@@ -79,7 +105,7 @@ fn setup(
     });
 
     spawn_player(
-        Player {},
+        Player::new(),
         Transform::default(),
         &mut commands,
         player_mesh.clone(),
@@ -93,5 +119,26 @@ fn setup(
         ..default()
     });
 
-    enemy::setup(commands, enemy_mesh, enemy_material)
+    enemy::setup(&mut commands, enemy_mesh, enemy_material);
+
+    powerups::spawn_powerup(
+        powerups::PowerupType::Damage,
+        Transform::from_translation(Vec3::new(10.0, 0.0, 10.0)),
+        &mut commands,
+        &server,
+    );
+
+    powerups::spawn_powerup(
+        powerups::PowerupType::Speed,
+        Transform::from_translation(Vec3::new(-10.0, 0.0, 10.0)),
+        &mut commands,
+        &server,
+    );
+
+    powerups::spawn_powerup(
+        powerups::PowerupType::Health,
+        Transform::from_translation(Vec3::new(10.0, 0.0, -10.0)),
+        &mut commands,
+        &server,
+    );
 }

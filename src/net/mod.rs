@@ -7,7 +7,8 @@ use bevy_matchbox::{
 };
 
 use crate::{
-    bullet::spawn_bullet,
+    bullet::{spawn_bullet, Bullet},
+    enemy::Enemy,
     player::{spawn_player, NetPlayer, Player},
 };
 
@@ -16,7 +17,6 @@ use self::packet::NetEvent;
 #[derive(Debug, Clone, Resource)]
 pub struct NetData {
     room: String,
-    peers: Vec<PeerId>,
 }
 
 #[derive(Debug, Clone)]
@@ -31,7 +31,6 @@ impl Plugin for NetPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(NetData {
             room: self.room.clone(),
-            peers: Vec::new(),
         })
         .add_event::<NetEvent>()
         .add_systems(Startup, startup)
@@ -44,8 +43,8 @@ fn startup(mut commands: Commands, net_data: Res<NetData>) {
     info!(%room_url, "connecting to matchbox server");
     commands.insert_resource(MatchboxSocket::from(
         WebRtcSocketBuilder::new(room_url)
-            .add_reliable_channel()
-            .add_unreliable_channel(),
+            .add_unreliable_channel()
+            .add_reliable_channel(),
     ));
 }
 
@@ -57,13 +56,16 @@ fn update(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut players: Query<(Entity, &Player, &mut Transform, &NetPlayer)>,
+    mut bullets: Query<
+        (&mut Transform, &mut Bullet, &mut Visibility),
+        (Without<Enemy>, Without<Player>),
+    >,
 ) {
     let peer_updates = socket.update_peers();
     for (peer_id, peer_state) in peer_updates {
         match peer_state {
             PeerState::Connected => {
                 info!(%peer_id, "connected to peer");
-                net_data.peers.push(peer_id);
 
                 let player_mesh = meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap());
                 let player_1_material = materials.add(StandardMaterial {
@@ -73,7 +75,7 @@ fn update(
                 });
 
                 spawn_player(
-                    Player {},
+                    Player::new(),
                     Transform::default(),
                     &mut commands,
                     player_mesh,
@@ -83,7 +85,6 @@ fn update(
             }
             PeerState::Disconnected => {
                 info!(%peer_id, "disconnected from peer");
-                net_data.peers.retain(|&id| id != peer_id);
 
                 // find player entity and despawn
                 if let Some((entity, _, _, _)) = players
@@ -96,14 +97,16 @@ fn update(
         }
     }
 
+    let peers = socket.connected_peers().collect::<Vec<_>>();
+
     let events = tx_net_event.read().collect::<Vec<_>>();
     if !events.is_empty() {
-        for peer_id in &net_data.peers {
+        for peer_id in &peers {
             for event in &events {
                 socket
                     .get_channel(0)
                     .unwrap()
-                    .send(packet::to_net_packet(event), *peer_id);
+                    .send(packet::to_net_packet(event), peer_id.clone());
             }
         }
     }
@@ -120,11 +123,8 @@ fn update(
                         transform.translation = pos;
                     }
                 }
-                NetEvent::NewBullet {
-                    position: pos,
-                    velocity: vel,
-                } => {
-                    spawn_bullet(&mut commands, &mut meshes, &mut materials, pos, vel);
+                NetEvent::NewBullet { position, velocity } => {
+                    spawn_bullet(&mut bullets, position, velocity);
                 }
             }
         }

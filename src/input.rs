@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::{
     math::{vec2, vec3},
     prelude::*,
@@ -6,9 +8,10 @@ use bevy::{
 };
 
 use crate::{
-    bullet::spawn_bullet,
+    bullet::{spawn_bullet, Bullet},
+    enemy::Enemy,
     net::packet::NetEvent,
-    player::{NetPlayer, Player, PLAYER_SPEED},
+    player::{NetPlayer, Player},
 };
 
 #[derive(Resource)]
@@ -18,7 +21,7 @@ pub struct InputPlugin;
 
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(BulletTimer(Timer::from_seconds(0.00001, TimerMode::Once)))
+        app.insert_resource(BulletTimer(Timer::from_seconds(0.1, TimerMode::Once)))
             .add_systems(PreUpdate, (read_input, read_bullet_input.after(read_input)));
     }
 }
@@ -29,7 +32,7 @@ fn read_input(
     mut player: Query<(&Player, &mut Transform), Without<NetPlayer>>,
     mut tx_net_event: EventWriter<NetEvent>,
 ) {
-    let (_player, mut transform) = player.single_mut();
+    let (player, mut transform) = player.single_mut();
 
     let dt = time.delta_seconds();
     let mut direction = Vec2::ZERO;
@@ -48,27 +51,28 @@ fn read_input(
     }
 
     if direction != Vec2::ZERO {
-        transform.translation += vec3(direction.x, 0.0, direction.y) * PLAYER_SPEED * dt;
+        transform.translation += vec3(direction.x, 0.0, direction.y) * player.speed * dt;
         transform.look_to(vec3(direction.x, 0.0, direction.y), Vec3::Y);
         tx_net_event.send(NetEvent::PlayerUpdate(transform.translation));
     }
 }
 
 fn read_bullet_input(
-    mut command: Commands,
     window: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform)>,
     time: Res<Time>,
     keys: Res<Input<KeyCode>>,
     player: Query<(&Player, &Transform), Without<NetPlayer>>,
+    mut bullets: Query<
+        (&mut Transform, &mut Bullet, &mut Visibility),
+        (Without<Enemy>, Without<Player>),
+    >,
     mut tx_net_event: EventWriter<NetEvent>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     mut timer: ResMut<BulletTimer>,
 ) {
     let window = window.single();
     let (camera, global_transform) = camera.single();
-    let (_player, transform) = player.single();
+    let (player, transform) = player.single();
 
     timer.0.tick(time.delta());
     if keys.any_pressed([KeyCode::Space]) && timer.0.finished() {
@@ -97,15 +101,11 @@ fn read_bullet_input(
             direction.z + fastrand::f32() * spread - spread / 2.0,
         );
 
-        spawn_bullet(
-            &mut command,
-            &mut meshes,
-            &mut materials,
-            position,
-            velocity,
-        );
+        spawn_bullet(&mut bullets, position, velocity);
 
         tx_net_event.send(NetEvent::NewBullet { position, velocity });
+
+        timer.0.set_duration(Duration::from_secs_f32(0.1 / player.damage));
 
         timer.0.reset();
     }

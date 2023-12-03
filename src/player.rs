@@ -15,7 +15,21 @@ pub struct PlayerBundle {
 }
 
 #[derive(Component)]
-pub struct Player {}
+pub struct Player {
+    pub health: f32,
+    pub speed: f32,
+    pub damage: f32,
+}
+
+impl Player {
+    pub fn new() -> Self {
+        Self {
+            health: 100.0,
+            speed: PLAYER_SPEED,
+            damage: 1.0,
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct NetPlayer(pub PeerId);
