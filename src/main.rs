@@ -1,12 +1,11 @@
 mod camera;
 pub mod cli;
+mod enemy;
 pub mod input;
 mod net;
 mod player;
-mod enemy;
 
 use bevy::prelude::*;
-use bevy_ggrs::{GgrsSchedule, ReadInputs};
 use camera::spawn_camera;
 use clap::Parser;
 use cli::Cli;
@@ -28,20 +27,18 @@ fn main() {
             }),
             NetPlugin {
                 room: "test".into(),
-                players: 2,
             },
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(SpawnTimer(Timer::from_seconds(5.0, TimerMode::Repeating)))
         .add_systems(Startup, setup)
-        .add_systems(ReadInputs, input::read_local_inputs)
+        .add_systems(PreUpdate, input::read_input)
         .add_systems(
-            GgrsSchedule,
+            Update,
             (
                 enemy::spawn_wave,
-                player::update_player.after(enemy::spawn_wave),
-                enemy::update_enemy_transforms.after(player::update_player).before(camera::update_camera),
-                camera::update_camera.after(player::update_player),
+                camera::update_camera,
+                enemy::update_enemy_transforms.before(camera::update_camera),
             ),
         )
         .run();
@@ -51,7 +48,7 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut server: Res<AssetServer>
+    mut server: Res<AssetServer>,
 ) {
     let player_mesh = meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap());
     let player_1_material = materials.add(StandardMaterial {
@@ -59,30 +56,18 @@ fn setup(
         unlit: true,
         ..default()
     });
-    let player_2_material = materials.add(StandardMaterial {
-        base_color: Color::RED,
-        unlit: true,
-        ..default()
-    });
 
     // Camera
     spawn_camera(&mut commands);
 
-    // Player
+    // // Player
     spawn_player(
-        Player { id: 0 },
+        Player {},
         Transform::default(),
         &mut commands,
         player_mesh.clone(),
         player_1_material,
-    );
-
-    spawn_player(
-        Player { id: 1 },
-        Transform::from_xyz(0.0, 0.0, 5.0),
-        &mut commands,
-        player_mesh,
-        player_2_material,
+        None,
     );
 
     let enemy_mesh: Handle<Mesh> = server.load("enemy1.glb#Mesh0/Primitive0");

@@ -1,44 +1,37 @@
-use bevy::{prelude::*, utils::HashMap};
-use bevy_ggrs::{LocalInputs, LocalPlayers};
+use bevy::{math::vec3, prelude::*};
 
-use crate::net::Config;
+use crate::{
+    net::packet::NetEvent,
+    player::{NetPlayer, Player, PLAYER_SPEED},
+};
 
-type InputSize = u32;
-
-pub const INPUT_UP: InputSize = 1 << 0;
-pub const INPUT_DOWN: InputSize = 1 << 1;
-pub const INPUT_LEFT: InputSize = 1 << 2;
-pub const INPUT_RIGHT: InputSize = 1 << 3;
-pub const INPUT_FIRE: InputSize = 1 << 4;
-
-pub fn read_local_inputs(
-    mut commands: Commands,
+pub fn read_input(
     keys: Res<Input<KeyCode>>,
-    local_players: Res<LocalPlayers>,
+    mut player: Query<(&Player, &mut Transform, Without<NetPlayer>)>,
+    time: Res<Time>,
+    mut tx_net_event: EventWriter<NetEvent>,
 ) {
-    let mut local_inputs = HashMap::new();
+    let (_player, mut transform, _) = player.single_mut();
 
-    for handle in &local_players.0 {
-        let mut input = 0;
+    let dt = time.delta_seconds();
+    let mut direction = Vec2::ZERO;
 
-        if keys.any_pressed([KeyCode::Up, KeyCode::W]) {
-            input |= INPUT_UP;
-        }
-        if keys.any_pressed([KeyCode::Down, KeyCode::S]) {
-            input |= INPUT_DOWN;
-        }
-        if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
-            input |= INPUT_LEFT
-        }
-        if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
-            input |= INPUT_RIGHT;
-        }
-        if keys.any_pressed([KeyCode::Space, KeyCode::Return]) {
-            input |= INPUT_FIRE;
-        }
-
-        local_inputs.insert(*handle, input);
+    if keys.any_pressed([KeyCode::Up, KeyCode::W]) {
+        direction.y -= 1.0;
+    }
+    if keys.any_pressed([KeyCode::Down, KeyCode::S]) {
+        direction.y += 1.0;
+    }
+    if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
+        direction.x -= 1.0;
+    }
+    if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
+        direction.x += 1.0;
     }
 
-    commands.insert_resource(LocalInputs::<Config>(local_inputs));
+    if direction != Vec2::ZERO {
+        transform.translation += vec3(direction.x, 0.0, direction.y) * PLAYER_SPEED * dt;
+
+        tx_net_event.send(NetEvent::PlayerUpdate(transform.translation));
+    }
 }
