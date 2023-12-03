@@ -1,12 +1,12 @@
 use bevy::{
     math::{vec2, vec3},
     prelude::*,
-    render::camera::{self, Camera},
+    render::camera::Camera,
     window::PrimaryWindow,
 };
 
 use crate::{
-    bullet::{Bullet, BulletBundle},
+    bullet::spawn_bullet,
     net::packet::NetEvent,
     player::{NetPlayer, Player, PLAYER_SPEED},
 };
@@ -61,6 +61,7 @@ fn read_bullet_input(
     time: Res<Time>,
     keys: Res<Input<KeyCode>>,
     player: Query<(&Player, &Transform), Without<NetPlayer>>,
+    mut tx_net_event: EventWriter<NetEvent>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut timer: ResMut<BulletTimer>,
@@ -88,35 +89,23 @@ fn read_bullet_input(
         let direction = (global_cursor - transform.translation).normalize();
 
         let spread = 0.15;
-        let direction = Vec3::new(
+
+        let position = vec2(transform.translation.x, transform.translation.z);
+
+        let velocity = vec2(
             direction.x + fastrand::f32() * spread - spread / 2.0,
-            // direction.y + fastrand::f32() * spread - spread / 2.0,
-            0.0,
             direction.z + fastrand::f32() * spread - spread / 2.0,
         );
 
-        let mesh = meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap());
-        let material = materials.add(StandardMaterial {
-            base_color: Color::YELLOW,
-            unlit: true,
-            ..default()
-        });
+        spawn_bullet(
+            &mut command,
+            &mut meshes,
+            &mut materials,
+            position,
+            velocity,
+        );
 
-        command.spawn(BulletBundle {
-            bullet: Bullet {
-                damage: 1.0,
-                speed: 30.0,
-                velocity: vec2(direction.x, direction.z),
-                ttl: 2.0,
-            },
-            pbr: PbrBundle {
-                mesh,
-                material,
-                transform: Transform::from_translation(transform.translation)
-                    .with_scale(Vec3::splat(0.1)),
-                ..Default::default()
-            },
-        });
+        tx_net_event.send(NetEvent::NewBullet { position, velocity });
 
         timer.0.reset();
     }

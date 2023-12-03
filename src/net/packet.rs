@@ -1,6 +1,9 @@
 use std::io::{Read as _, Write as _};
 
-use bevy::{ecs::event::Event, math::Vec3};
+use bevy::{
+    ecs::event::Event,
+    math::{Vec2, Vec3},
+};
 use serde::{Deserialize, Serialize};
 
 const MAX_UNCOMPRESSED_SIZE: usize = 256;
@@ -8,6 +11,7 @@ const MAX_UNCOMPRESSED_SIZE: usize = 256;
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]
 pub enum NetEvent {
     PlayerUpdate(Vec3),
+    NewBullet { position: Vec2, velocity: Vec2 },
 }
 
 // compress with flate if >256 bytes
@@ -27,7 +31,7 @@ pub fn to_net_packet<T: Serialize>(data: &T) -> Box<[u8]> {
     data.into_boxed_slice()
 }
 
-pub fn from_net_packet<T: for<'de> Deserialize<'de>>(data: &[u8]) -> T {
+pub fn from_net_packet<T: for<'de> Deserialize<'de>>(data: &[u8]) -> Option<T> {
     let compressed = data.last().unwrap() == &1;
     let data = if compressed {
         let mut decoder = flate2::read::ZlibDecoder::new(&data[..data.len() - 1]);
@@ -38,7 +42,7 @@ pub fn from_net_packet<T: for<'de> Deserialize<'de>>(data: &[u8]) -> T {
         data[..data.len() - 1].to_vec()
     };
 
-    bincode::deserialize(&data).unwrap()
+    bincode::deserialize(&data).ok()
 }
 
 #[cfg(test)]
@@ -49,6 +53,6 @@ mod tests {
     fn test_to_net_packet() {
         let data = to_net_packet(&"hello");
         let data = from_net_packet::<String>(&data);
-        assert_eq!(data, "hello");
+        assert_eq!(data.unwrap(), "hello");
     }
 }

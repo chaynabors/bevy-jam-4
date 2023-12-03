@@ -6,7 +6,10 @@ use bevy_matchbox::{
     MatchboxSocket,
 };
 
-use crate::player::{spawn_player, NetPlayer, Player};
+use crate::{
+    bullet::spawn_bullet,
+    player::{spawn_player, NetPlayer, Player},
+};
 
 use self::packet::NetEvent;
 
@@ -106,16 +109,22 @@ fn update(
     }
 
     for (peer_id, data) in socket.get_channel(0).unwrap().receive() {
-        let event = packet::from_net_packet::<NetEvent>(&data);
-
-        match event {
-            NetEvent::PlayerUpdate(pos) => {
-                info!(%peer_id, ?pos, "received player update");
-                if let Some((_, _, mut transform, _)) = players
-                    .iter_mut()
-                    .find(|(_, _, _, NetPlayer(id))| id == &peer_id)
-                {
-                    transform.translation = pos;
+        if let Some(event) = packet::from_net_packet::<NetEvent>(&data) {
+            match event {
+                NetEvent::PlayerUpdate(pos) => {
+                    info!(%peer_id, ?pos, "received player update");
+                    if let Some((_, _, mut transform, _)) = players
+                        .iter_mut()
+                        .find(|(_, _, _, NetPlayer(id))| id == &peer_id)
+                    {
+                        transform.translation = pos;
+                    }
+                }
+                NetEvent::NewBullet {
+                    position: pos,
+                    velocity: vel,
+                } => {
+                    spawn_bullet(&mut commands, &mut meshes, &mut materials, pos, vel);
                 }
             }
         }

@@ -1,4 +1,7 @@
-use bevy::{math::vec3, prelude::*};
+use bevy::{
+    math::{vec2, vec3},
+    prelude::*,
+};
 
 use crate::enemy::Enemy;
 
@@ -45,7 +48,7 @@ fn update(
             if *visibility == Visibility::Hidden {
                 continue;
             }
-            if (transform.translation - bullet_transform.translation).length() < 0.5 {
+            if (transform.translation.xz() - bullet_transform.translation.xz()).length() < 0.5 {
                 commands.entity(bullet_entity).despawn();
                 *visibility = Visibility::Hidden;
             }
@@ -58,4 +61,35 @@ fn update(
             commands.entity(entity).despawn();
         }
     }
+}
+
+pub fn spawn_bullet(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    position: Vec2,
+    velocity: Vec2,
+) {
+    let mesh = meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap());
+    let material = materials.add(StandardMaterial {
+        base_color: Color::YELLOW,
+        unlit: true,
+        ..default()
+    });
+
+    commands.spawn(BulletBundle {
+        bullet: Bullet {
+            damage: 1.0,
+            speed: 30.0,
+            velocity,
+            ttl: 2.0,
+        },
+        pbr: PbrBundle {
+            mesh,
+            material,
+            transform: Transform::from_translation(vec3(position.x, 0.5, position.y))
+                .with_scale(Vec3::splat(0.1)),
+            ..Default::default()
+        },
+    });
 }
