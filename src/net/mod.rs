@@ -1,15 +1,19 @@
 pub mod packet;
 
-use bevy::prelude::*;
+use bevy::{
+    math::vec3,
+    pbr::{NotShadowCaster, NotShadowReceiver},
+    prelude::*,
+};
 use bevy_matchbox::{
-    matchbox_socket::{MultipleChannels, PeerId, PeerState, WebRtcSocketBuilder},
+    matchbox_socket::{MultipleChannels, PeerState, WebRtcSocketBuilder},
     MatchboxSocket,
 };
 
 use crate::{
-    bullet::{spawn_bullet, Bullet},
+    bullet::Bullet,
     enemy::Enemy,
-    player::{spawn_player, NetPlayer, Player},
+    player::{NetPlayer, Player, PlayerBundle},
 };
 
 use self::packet::NetEvent;
@@ -50,10 +54,9 @@ fn startup(mut commands: Commands, net_data: Res<NetData>) {
 
 fn update(
     mut commands: Commands,
+    server: Res<AssetServer>,
     mut socket: ResMut<MatchboxSocket<MultipleChannels>>,
-    mut net_data: ResMut<NetData>,
     mut tx_net_event: EventReader<NetEvent>,
-    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut players: Query<(Entity, &Player, &mut Transform, &NetPlayer)>,
     mut bullets: Query<
@@ -67,21 +70,23 @@ fn update(
             PeerState::Connected => {
                 info!(%peer_id, "connected to peer");
 
-                let player_mesh = meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap());
-                let player_1_material = materials.add(StandardMaterial {
-                    base_color: Color::BLUE,
-                    unlit: true,
-                    ..default()
-                });
-
-                spawn_player(
-                    Player::new(),
-                    Transform::default(),
-                    &mut commands,
-                    player_mesh,
-                    player_1_material,
-                    Some(peer_id),
-                );
+                commands.spawn((
+                    PlayerBundle {
+                        player: Player::new(),
+                        pbr: PbrBundle {
+                            mesh: server.load("ship1.glb#Mesh0/Primitive0"),
+                            material: materials.add(StandardMaterial {
+                                unlit: true,
+                                ..default()
+                            }),
+                            transform: Transform::default(),
+                            ..default()
+                        },
+                        not_shadow_caster: NotShadowCaster,
+                        not_shadow_receiver: NotShadowReceiver,
+                    },
+                    NetPlayer(peer_id),
+                ));
             }
             PeerState::Disconnected => {
                 info!(%peer_id, "disconnected from peer");
@@ -114,17 +119,26 @@ fn update(
     for (peer_id, data) in socket.get_channel(0).unwrap().receive() {
         if let Some(event) = packet::from_net_packet::<NetEvent>(&data) {
             match event {
-                NetEvent::PlayerUpdate(pos) => {
-                    info!(%peer_id, ?pos, "received player update");
+                NetEvent::PlayerState { position, rotation } => {
+                    info!(%peer_id, ?position, "received player update");
                     if let Some((_, _, mut transform, _)) = players
                         .iter_mut()
                         .find(|(_, _, _, NetPlayer(id))| id == &peer_id)
                     {
-                        transform.translation = pos;
+                        transform.translation = position;
+                        transform.rotation = rotation;
                     }
                 }
                 NetEvent::NewBullet { position, velocity } => {
-                    spawn_bullet(&mut bullets, position, velocity);
+                    for (mut transform, mut bullet, mut visibility) in bullets.iter_mut() {
+                        if *visibility == Visibility::Hidden {
+                            *visibility = Visibility::Visible;
+                            transform.translation = vec3(position.x, 0.5, position.y);
+                            bullet.velocity = velocity;
+                            bullet.ttl = 2.0;
+                            break;
+                        }
+                    }
                 }
             }
         }

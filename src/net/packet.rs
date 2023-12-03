@@ -2,7 +2,7 @@ use std::io::{Read as _, Write as _};
 
 use bevy::{
     ecs::event::Event,
-    math::{Vec2, Vec3},
+    math::{Quat, Vec2, Vec3},
 };
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +10,7 @@ const MAX_UNCOMPRESSED_SIZE: usize = 256;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]
 pub enum NetEvent {
-    PlayerUpdate(Vec3),
+    PlayerState { position: Vec3, rotation: Quat },
     NewBullet { position: Vec2, velocity: Vec2 },
 }
 

@@ -14,9 +14,10 @@ use bullet::BulletPlugin;
 use camera::spawn_camera;
 use clap::Parser;
 use cli::Cli;
+use enemy::EnemyPlugin;
 use input::InputPlugin;
 use net::NetPlugin;
-use player::{spawn_player, Player};
+use player::PlayerPlugin;
 use powerups::PowerupPlugin;
 
 fn main() {
@@ -34,26 +35,20 @@ fn main() {
             NetPlugin {
                 room: "test".into(),
             },
-            BulletPlugin,
             InputPlugin,
+            PlayerPlugin,
+            EnemyPlugin,
+            BulletPlugin,
             PowerupPlugin,
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (
-                enemy::spawn_wave,
-                camera::update_camera,
-                enemy::update_enemy_transforms.before(camera::update_camera),
-            ),
-        )
+        .add_systems(PostUpdate, camera::update_camera)
         .run();
 }
 
 fn setup(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     server: Res<AssetServer>,
 ) {
@@ -96,30 +91,6 @@ fn setup(
         .into(),
         ..default()
     });
-
-    // Player
-    let player_mesh = meshes.add(Mesh::try_from(shape::Icosphere::default()).unwrap());
-    let player_1_material = materials.add(StandardMaterial {
-        unlit: true,
-        ..default()
-    });
-
-    spawn_player(
-        Player::new(),
-        Transform::default(),
-        &mut commands,
-        player_mesh.clone(),
-        player_1_material,
-        None,
-    );
-
-    let enemy_mesh: Handle<Mesh> = server.load("enemy1.glb#Mesh0/Primitive0");
-    let enemy_material = materials.add(StandardMaterial {
-        unlit: true,
-        ..default()
-    });
-
-    enemy::setup(&mut commands, enemy_mesh, enemy_material);
 
     powerups::spawn_powerup(
         powerups::PowerupType::Damage,

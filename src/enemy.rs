@@ -6,6 +6,17 @@ const MAX_ENEMY_COUNT: usize = 1024;
 const ENEMY_SPEED: f32 = 4.2;
 const ARENA_SIZE: f32 = 12.0;
 
+pub struct EnemyPlugin;
+
+impl Plugin for EnemyPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(SpawnGeneration(0))
+            .insert_resource(SpawnTimer(Timer::from_seconds(5.0, TimerMode::Once)))
+            .add_systems(Startup, startup)
+            .add_systems(Update, (spawn_wave, update_enemy_transforms));
+    }
+}
+
 #[derive(Bundle, Clone)]
 struct EnemyBundle {
     enemy: Enemy,
@@ -19,17 +30,22 @@ pub struct Enemy;
 pub struct SpawnTimer(pub Timer);
 
 #[derive(Resource)]
-pub struct SpawnGeneation(pub usize);
+pub struct SpawnGeneration(pub usize);
 
-pub fn setup(commands: &mut Commands, mesh: Handle<Mesh>, material: Handle<StandardMaterial>) {
-    commands.insert_resource(SpawnGeneation(0));
-    commands.insert_resource(SpawnTimer(Timer::from_seconds(5.0, TimerMode::Once)));
+pub fn startup(
+    mut commands: Commands,
+    server: Res<AssetServer>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     commands.spawn_batch(
         std::iter::repeat(EnemyBundle {
             enemy: Enemy,
             pbr: PbrBundle {
-                mesh,
-                material,
+                mesh: server.load("enemy1.glb#Mesh0/Primitive0"),
+                material: materials.add(StandardMaterial {
+                    unlit: true,
+                    ..default()
+                }),
                 transform: Transform::default(),
                 visibility: Visibility::Hidden,
                 ..default()
@@ -41,9 +57,9 @@ pub fn setup(commands: &mut Commands, mesh: Handle<Mesh>, material: Handle<Stand
 
 pub fn spawn_wave(
     time: Res<Time>,
-    mut spawn_generation: ResMut<SpawnGeneation>,
-    mut enemies: Query<(&mut Transform, &mut Visibility), With<Enemy>>,
     mut spawn_timer: ResMut<SpawnTimer>,
+    mut spawn_generation: ResMut<SpawnGeneration>,
+    mut enemies: Query<(&mut Transform, &mut Visibility), With<Enemy>>,
 ) {
     if !spawn_timer.0.just_finished() {
         spawn_timer.0.tick(time.delta());
@@ -95,5 +111,3 @@ pub fn update_enemy_transforms(
         enemy.look_to(direction, Vec3::Y);
     }
 }
-
-pub fn resolve_collisions(mut enemies: Query<&mut Transform, With<Enemy>>) {}

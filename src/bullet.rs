@@ -1,11 +1,31 @@
+use std::time::Duration;
+
 use bevy::{
     math::{vec2, vec3},
     prelude::*,
 };
 
-use crate::{enemy::Enemy, player::Player};
+use crate::{
+    enemy::Enemy,
+    net::packet::NetEvent,
+    player::{NetPlayer, Player},
+};
 
 const MAX_BULLET_COUNT: usize = 1024 * 10;
+
+#[derive(Debug)]
+pub struct BulletPlugin;
+
+impl Plugin for BulletPlugin {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(BulletTimer(Timer::from_seconds(0.1, TimerMode::Once)))
+            .add_systems(Startup, startup)
+            .add_systems(Update, (update, spawn_bullets));
+    }
+}
+
+#[derive(Resource)]
+struct BulletTimer(pub Timer);
 
 #[derive(Component, Clone)]
 pub struct Bullet {
@@ -19,16 +39,6 @@ pub struct Bullet {
 pub struct BulletBundle {
     pub bullet: Bullet,
     pub pbr: PbrBundle,
-}
-
-#[derive(Debug)]
-pub struct BulletPlugin;
-
-impl Plugin for BulletPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, startup)
-            .add_systems(Update, update);
-    }
 }
 
 fn startup(
@@ -95,18 +105,47 @@ fn update(
     }
 }
 
-pub fn spawn_bullet(
-    bullets: &mut Query<(&mut Transform, &mut Bullet, &mut Visibility), (Without<Enemy>, Without<Player>)>,
-    position: Vec2,
-    velocity: Vec2,
+fn spawn_bullets(
+    mut tx_net_event: EventWriter<NetEvent>,
+    time: Res<Time>,
+    keys: Res<Input<KeyCode>>,
+    mut timer: ResMut<BulletTimer>,
+    player: Query<(&Player, &Transform), Without<NetPlayer>>,
+    mut bullets: Query<
+        (&mut Transform, &mut Bullet, &mut Visibility),
+        (Without<Enemy>, Without<Player>),
+    >,
 ) {
-    for (mut transform, mut bullet, mut visibility) in bullets.iter_mut() {
-        if *visibility == Visibility::Hidden {
-            *visibility = Visibility::Visible;
-            transform.translation = vec3(position.x, 0.5, position.y);
-            bullet.velocity = velocity;
-            bullet.ttl = 2.0;
-            break;
+    let (player, transform) = player.single();
+
+    timer.0.tick(time.delta());
+    if keys.any_pressed([KeyCode::Space]) && timer.0.finished() {
+        let spread = 0.50;
+
+        let position = vec2(transform.translation.x, transform.translation.z);
+
+        let forward = transform.forward();
+        let velocity = vec2(
+            forward.x + fastrand::f32() * spread - spread / 2.0,
+            forward.z + fastrand::f32() * spread - spread / 2.0,
+        );
+
+        for (mut transform, mut bullet, mut visibility) in bullets.iter_mut() {
+            if *visibility == Visibility::Hidden {
+                *visibility = Visibility::Visible;
+                transform.translation = vec3(position.x, 0.5, position.y);
+                bullet.velocity = velocity;
+                bullet.ttl = 2.0;
+                break;
+            }
         }
+
+        tx_net_event.send(NetEvent::NewBullet { position, velocity });
+
+        timer
+            .0
+            .set_duration(Duration::from_secs_f32(0.1 / player.damage));
+
+        timer.0.reset();
     }
 }
