@@ -1,3 +1,4 @@
+pub mod bullet;
 mod camera;
 pub mod cli;
 mod enemy;
@@ -6,10 +7,12 @@ mod net;
 mod player;
 
 use bevy::prelude::*;
+use bullet::BulletPlugin;
 use camera::spawn_camera;
 use clap::Parser;
 use cli::Cli;
 use enemy::SpawnTimer;
+use input::InputPlugin;
 use net::NetPlugin;
 use player::{spawn_player, Player};
 
@@ -28,11 +31,12 @@ fn main() {
             NetPlugin {
                 room: "test".into(),
             },
+            BulletPlugin,
+            InputPlugin,
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .insert_resource(SpawnTimer(Timer::from_seconds(5.0, TimerMode::Once)))
         .add_systems(Startup, setup)
-        .add_systems(PreUpdate, input::read_input)
         .add_systems(
             Update,
             (
