@@ -2,6 +2,7 @@ use bevy::{prelude::*, math::vec3};
 
 use crate::player::Player;
 
+const MAX_ENEMY_COUNT: usize = 1024;
 const ENEMY_SPEED: f32 = 4.2;
 const ARENA_SIZE: f32 = 10.0;
 
@@ -30,7 +31,7 @@ pub fn setup(
                 visibility: Visibility::Hidden,
                 ..default()
             },
-        }).take(1000))
+        }).take(MAX_ENEMY_COUNT))
 }
 
 pub fn spawn_wave(
@@ -84,4 +85,8 @@ pub fn update_enemy_transforms(
         enemy.translation += direction * ENEMY_SPEED * dt;
         enemy.look_to(direction, Vec3::Y);
     }
+}
+
+pub fn resolve_collisions(mut enemies: Query<&mut Transform, With<Enemy>>,) {
+    
 }
