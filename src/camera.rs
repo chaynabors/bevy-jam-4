@@ -14,6 +14,6 @@ pub fn update_camera(
     let transform = players.single();
 
     *camera.single_mut() =
-        Transform::from_translation(transform.translation + vec3(0.0, 1.0, 1.0).normalize() * 10.0)
+        Transform::from_translation(transform.translation + vec3(0.0, 1.0, 1.0).normalize() * 20.0)
             .looking_at(transform.translation, Vec3::Y);
 }

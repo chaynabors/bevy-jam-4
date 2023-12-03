@@ -42,6 +42,7 @@ pub fn spawn_wave(
         spawn_timer.0.tick(time.delta());
         return;
     }
+    spawn_timer.0.reset();
 
     let mut spawn_count = 10;
     for mut enemy in enemies.iter_mut() {
@@ -76,7 +77,7 @@ pub fn update_enemy_transforms(
             }
         }
 
-        if distance < 1.0 {
+        if distance < 0.5 {
             return;
         }
 

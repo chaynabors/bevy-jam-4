@@ -30,7 +30,7 @@ fn main() {
             },
         ))
         .insert_resource(ClearColor(Color::BLACK))
-        .insert_resource(SpawnTimer(Timer::from_seconds(5.0, TimerMode::Repeating)))
+        .insert_resource(SpawnTimer(Timer::from_seconds(5.0, TimerMode::Once)))
         .add_systems(Startup, setup)
         .add_systems(PreUpdate, input::read_input)
         .add_systems(
