@@ -12,7 +12,7 @@ use std::f32::consts::PI;
 
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bullet::BulletPlugin;
-use camera::spawn_camera;
+use camera::PlayerCameraPlugin;
 use clap::Parser;
 use cli::Cli;
 use enemy::EnemyPlugin;
@@ -39,6 +39,7 @@ fn main() {
             },
             InputPlugin,
             PlayerPlugin,
+            PlayerCameraPlugin,
             EnemyPlugin,
             BulletPlugin,
             PowerupPlugin,
@@ -46,7 +47,6 @@ fn main() {
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)
-        .add_systems(PostUpdate, camera::update_camera)
         .run();
 }
 
@@ -68,9 +68,6 @@ fn setup(
         material: floor_material,
         ..Default::default()
     });
-
-    // Camera
-    spawn_camera(&mut commands);
 
     // Sun
     commands.spawn(DirectionalLightBundle {

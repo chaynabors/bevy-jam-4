@@ -3,15 +3,24 @@ use bevy::{math::vec3, prelude::*};
 use crate::player::NetPlayer;
 use crate::player::Player;
 
-pub fn spawn_camera(commands: &mut Commands) -> Entity {
-    commands.spawn(Camera3dBundle::default()).id()
+pub struct PlayerCameraPlugin;
+
+impl Plugin for PlayerCameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, spawn_camera)
+            .add_systems(PostUpdate, update_camera);
+    }
 }
 
-pub fn update_camera(
+fn spawn_camera(mut commands: Commands) {
+    commands.spawn(Camera3dBundle::default());
+}
+
+fn update_camera(
     mut camera: Query<&mut Transform, With<Camera>>,
-    players: Query<&Transform, (With<Player>, Without<NetPlayer>, Without<Camera>)>,
+    player: Query<&Transform, (With<Player>, Without<NetPlayer>, Without<Camera>)>,
 ) {
-    let transform = players.single();
+    let transform = player.single();
 
     *camera.single_mut() =
         Transform::from_translation(transform.translation + vec3(0.0, 1.5, 1.0).normalize() * 20.0)
