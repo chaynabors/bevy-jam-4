@@ -1072,8 +1072,10 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "641b6eac7a2022eb3033fe14b5cef59a68f65fad30620291c8d6f84eab3d9ec5"
 dependencies = [
+ "async-compat",
  "bevy",
  "cfg-if",
+ "matchbox_signaling",
  "matchbox_socket",
 ]
 

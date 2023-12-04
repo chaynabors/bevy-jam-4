@@ -7,7 +7,7 @@ use bevy::{
 
 use crate::{
     enemy::Enemy,
-    net::{packet::NetEvent, PlayerPeerId},
+    net::PlayerPeerId,
     player::Player,
     powerups::{PowerupSpawnEvent, PowerupType},
 };
@@ -30,6 +30,7 @@ struct BulletTimer(pub Timer);
 
 #[derive(Component, Clone)]
 pub struct Bullet {
+    pub id: u64,
     pub velocity: Vec2,
     pub ttl: f32,
     pub damage: f32,
@@ -54,9 +55,14 @@ fn startup(
         ..default()
     });
 
+    let mut id = 0;
     commands.spawn_batch(
         std::iter::repeat(BulletBundle {
             bullet: Bullet {
+                id: {
+                    id += 1;
+                    id
+                },
                 velocity: vec2(0.0, 0.0),
                 ttl: 2.0,
                 damage: 1.0,
@@ -116,7 +122,7 @@ fn update(
 }
 
 fn spawn_bullets(
-    mut tx_net_event: EventWriter<NetEvent>,
+    // mut tx_net_event: EventWriter<NetEvent>,
     time: Res<Time>,
     keys: Res<Input<KeyCode>>,
     mut timer: ResMut<BulletTimer>,
@@ -146,11 +152,16 @@ fn spawn_bullets(
                 transform.translation = vec3(position.x, 0.5, position.y);
                 bullet.velocity = velocity;
                 bullet.ttl = 2.0;
+
+                // tx_net_event.send(NetEvent::BulletState {
+                //     id: bullet.id,
+                //     position,
+                //     velocity,
+                // });
+
                 break;
             }
         }
-
-        tx_net_event.send(NetEvent::NewBullet { position, velocity });
 
         timer
             .0

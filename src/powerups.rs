@@ -57,7 +57,7 @@ fn update(
     for (powerup_entity, mut powerup_transform, powerup, mut vis) in powerups.iter_mut() {
         powerup_transform.rotation = Quat::from_axis_angle(Vec3::Y, time.elapsed_seconds() * 2.0);
 
-        for (player_entity, mut player_transform, mut player) in players.iter_mut() {
+        for (player_entity, player_transform, mut player) in players.iter_mut() {
             if *vis != Visibility::Hidden {
                 if (player_transform.translation.xz() - powerup_transform.translation.xz()).length()
                     < 1.0
