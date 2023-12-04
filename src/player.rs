@@ -1,10 +1,7 @@
-use bevy::{
-    pbr::{NotShadowCaster, NotShadowReceiver},
-    prelude::*, window::PrimaryWindow,
-};
+use bevy::{prelude::*, window::PrimaryWindow};
 
-pub const PLAYER_MAX_SPEED: f32 = 6.01;
-pub const PLAYER_ACCELERATION_RATE: f32 = 1.0;
+pub const PLAYER_MAX_SPEED: f32 = 6.23;
+pub const PLAYER_ACCELERATION_RATE: f32 = 64.0;
 
 use crate::ship::{Ship, ShipBundle};
 
@@ -13,7 +10,7 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, startup)
-            .add_systems(Update, update);
+            .add_systems(PreUpdate, update);
     }
 }
 
@@ -56,8 +53,6 @@ fn startup(
                 transform: Transform::default(),
                 ..default()
             },
-            not_shadow_caster: NotShadowCaster,
-            not_shadow_receiver: NotShadowReceiver,
         },
     });
 }
@@ -85,7 +80,6 @@ fn update(
     if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
         ship.move_dir.x += 1.0;
     }
-    ship.move_dir.clamp_length_max(1.0);
 
     let plane_origin = Vec3::new(0.0, 0.0, 0.0);
     let plane_normal = Vec3::new(0.0, 1.0, 0.0);
@@ -98,5 +92,5 @@ fn update(
     let Some(distance) = ray.intersect_plane(plane_origin, plane_normal) else {
         return;
     };
-    ship.look_dir = (ray.get_point(distance) - transform.translation).normalize_or_zero();
+    ship.look_dir = ray.get_point(distance) - transform.translation;
 }

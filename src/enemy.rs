@@ -2,10 +2,12 @@ use std::time::Duration;
 
 use bevy::{math::vec3, prelude::*};
 
-use crate::player::Player;
+use crate::{
+    player::Player,
+    ship::{Ship, ShipBundle},
+};
 
 const MAX_ENEMY_COUNT: usize = 1024;
-const ENEMY_SPEED: f32 = 4.2;
 const ARENA_SIZE: f32 = 12.0;
 
 pub struct EnemyPlugin;
@@ -22,7 +24,7 @@ impl Plugin for EnemyPlugin {
 #[derive(Bundle, Clone)]
 struct EnemyBundle {
     enemy: Enemy,
-    pbr: PbrBundle,
+    ship: ShipBundle,
 }
 
 #[derive(Clone, Component)]
@@ -42,15 +44,18 @@ pub fn startup(
     commands.spawn_batch(
         std::iter::repeat(EnemyBundle {
             enemy: Enemy,
-            pbr: PbrBundle {
-                mesh: server.load("enemy1.glb#Mesh0/Primitive0"),
-                material: materials.add(StandardMaterial {
-                    unlit: true,
+            ship: ShipBundle {
+                ship: Ship::new(4.05, 16.0),
+                pbr: PbrBundle {
+                    mesh: server.load("enemy1.glb#Mesh0/Primitive0"),
+                    material: materials.add(StandardMaterial {
+                        unlit: true,
+                        ..default()
+                    }),
+                    transform: Transform::default(),
+                    visibility: Visibility::Hidden,
                     ..default()
-                }),
-                transform: Transform::default(),
-                visibility: Visibility::Hidden,
-                ..default()
+                },
             },
         })
         .take(MAX_ENEMY_COUNT),
@@ -92,17 +97,17 @@ pub fn spawn_wave(
 
 pub fn update_enemy(
     mut players: Query<(&Transform, &mut Player), Without<Enemy>>,
-    mut enemies: Query<(&mut Transform, &Visibility), With<Enemy>>,
+    mut enemies: Query<(&mut Ship, &Transform, &Visibility), With<Enemy>>,
     time: Res<Time>,
 ) {
     let dt = time.delta_seconds();
 
-    for (mut enemy, vis) in &mut enemies {
-        if vis != Visibility::Hidden {
+    for (mut ship, transform, visibility) in &mut enemies {
+        if visibility != Visibility::Hidden {
             let mut direction = Vec3::ZERO;
             let mut distance = ARENA_SIZE * 10.0;
             for (player_transform, mut player) in players.iter_mut() {
-                let enemy_to_player = player_transform.translation - enemy.translation;
+                let enemy_to_player = player_transform.translation - transform.translation;
                 let enemy_to_player_len = enemy_to_player.length();
                 if enemy_to_player_len < distance {
                     direction = enemy_to_player.normalize_or_zero();
@@ -118,8 +123,8 @@ pub fn update_enemy(
                 continue;
             }
 
-            enemy.translation += direction * ENEMY_SPEED * dt;
-            enemy.look_to(direction, Vec3::Y);
+            ship.move_dir = direction;
+            ship.look_dir = ship.velocity();
         }
     }
 }

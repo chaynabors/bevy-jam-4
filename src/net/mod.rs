@@ -82,8 +82,6 @@ fn update(
                             transform: Transform::default(),
                             ..default()
                         },
-                        not_shadow_caster: NotShadowCaster,
-                        not_shadow_receiver: NotShadowReceiver,
                     },
                     PlayerPeerId(peer_id),
                 ));
