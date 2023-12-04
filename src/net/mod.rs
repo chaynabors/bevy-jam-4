@@ -55,7 +55,7 @@ impl Plugin for NetPlugin {
 }
 
 fn startup(mut commands: Commands, net_data: Res<NetData>) {
-    let room_url = "ws://[::]:3536";
+    let room_url = "wss://bevy-jam-4.fly.dev";
     info!(%room_url, "connecting to matchbox server");
 
     commands.insert_resource(MatchboxSocket::from(
