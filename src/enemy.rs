@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::{math::vec3, prelude::*};
 
 use crate::player::Player;
@@ -13,7 +15,7 @@ impl Plugin for EnemyPlugin {
         app.insert_resource(SpawnGeneration(0))
             .insert_resource(SpawnTimer(Timer::from_seconds(5.0, TimerMode::Once)))
             .add_systems(Startup, startup)
-            .add_systems(Update, (spawn_wave, update_enemy_transforms));
+            .add_systems(Update, (spawn_wave, update_enemy));
     }
 }
 
@@ -67,6 +69,10 @@ pub fn spawn_wave(
     }
     spawn_timer.0.reset();
 
+    spawn_timer.0.set_duration(Duration::from_secs_f32(
+        5.0 + spawn_generation.0 as f32 * 0.5,
+    ));
+
     spawn_generation.0 += 1;
 
     let mut spawn_count = 5 * spawn_generation.0;
@@ -84,30 +90,36 @@ pub fn spawn_wave(
     }
 }
 
-pub fn update_enemy_transforms(
-    players: Query<&Transform, (With<Player>, Without<Enemy>)>,
-    mut enemies: Query<&mut Transform, With<Enemy>>,
+pub fn update_enemy(
+    mut players: Query<(&Transform, &mut Player), Without<Enemy>>,
+    mut enemies: Query<(&mut Transform, &Visibility), With<Enemy>>,
     time: Res<Time>,
 ) {
     let dt = time.delta_seconds();
 
-    for mut enemy in &mut enemies {
-        let mut direction = Vec3::ZERO;
-        let mut distance = ARENA_SIZE * 10.0;
-        for player in &players {
-            let enemy_to_player = player.translation - enemy.translation;
-            let enemy_to_player_len = enemy_to_player.length();
-            if enemy_to_player_len < distance {
-                direction = enemy_to_player.normalize_or_zero();
-                distance = enemy_to_player_len;
+    for (mut enemy, vis) in &mut enemies {
+        if vis != Visibility::Hidden {
+            let mut direction = Vec3::ZERO;
+            let mut distance = ARENA_SIZE * 10.0;
+            for (player_transform, mut player) in players.iter_mut() {
+                let enemy_to_player = player_transform.translation - enemy.translation;
+                let enemy_to_player_len = enemy_to_player.length();
+                if enemy_to_player_len < distance {
+                    direction = enemy_to_player.normalize_or_zero();
+                    distance = enemy_to_player_len;
+                }
+
+                if enemy_to_player_len < 0.75 {
+                    player.health -= 1.0 * dt;
+                }
             }
-        }
 
-        if distance < 0.5 {
-            continue;
-        }
+            if distance < 0.5 {
+                continue;
+            }
 
-        enemy.translation += direction * ENEMY_SPEED * dt;
-        enemy.look_to(direction, Vec3::Y);
+            enemy.translation += direction * ENEMY_SPEED * dt;
+            enemy.look_to(direction, Vec3::Y);
+        }
     }
 }

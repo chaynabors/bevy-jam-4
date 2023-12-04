@@ -6,6 +6,7 @@ mod input;
 mod net;
 mod player;
 mod powerups;
+mod ui;
 
 use std::f32::consts::PI;
 
@@ -19,6 +20,7 @@ use input::InputPlugin;
 use net::NetPlugin;
 use player::PlayerPlugin;
 use powerups::PowerupPlugin;
+use ui::UiPlugin;
 
 fn main() {
     let Cli { server: _ } = Cli::parse();
@@ -40,6 +42,7 @@ fn main() {
             EnemyPlugin,
             BulletPlugin,
             PowerupPlugin,
+            UiPlugin,
         ))
         .insert_resource(ClearColor(Color::BLACK))
         .add_systems(Startup, setup)

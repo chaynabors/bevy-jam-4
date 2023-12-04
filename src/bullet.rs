@@ -9,6 +9,7 @@ use crate::{
     enemy::Enemy,
     net::packet::NetEvent,
     player::{NetPlayer, Player},
+    powerups::{PowerupSpawnEvent, PowerupType},
 };
 
 const MAX_BULLET_COUNT: usize = 1024 * 10;
@@ -76,6 +77,7 @@ fn startup(
 fn update(
     mut bullets: Query<(&mut Transform, &mut Bullet, &mut Visibility), Without<Enemy>>,
     mut enemies: Query<(&Transform, &Enemy, &mut Visibility), Without<Bullet>>,
+    mut spawn_powerup_events: EventWriter<PowerupSpawnEvent>,
     time: Res<Time>,
 ) {
     for (mut transform, bullet, _) in bullets.iter_mut() {
@@ -92,6 +94,14 @@ fn update(
                 if (transform.translation.xz() - bullet_transform.translation.xz()).length() < 0.5 {
                     *bullet_vis = Visibility::Hidden;
                     *visibility = Visibility::Hidden;
+
+                    // 5% chance to spawn a powerup
+                    if fastrand::f32() < 0.05 {
+                        spawn_powerup_events.send(PowerupSpawnEvent {
+                            powerup_type: PowerupType::random(),
+                            transform: transform.clone(),
+                        })
+                    }
                 }
             }
         }
@@ -120,7 +130,7 @@ fn spawn_bullets(
 
     timer.0.tick(time.delta());
     if keys.any_pressed([KeyCode::Space]) && timer.0.finished() {
-        let spread = 0.50;
+        let spread = 0.10;
 
         let position = vec2(transform.translation.x, transform.translation.z);
 
