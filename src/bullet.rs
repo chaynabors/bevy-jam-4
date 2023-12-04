@@ -12,7 +12,7 @@ use crate::{
     powerups::{PowerupSpawnEvent, PowerupType},
 };
 
-const MAX_BULLET_COUNT: usize = 1024 * 10;
+pub const MAX_BULLET_COUNT: usize = 1024 * 16;
 
 #[derive(Debug)]
 pub struct BulletPlugin;

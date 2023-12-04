@@ -1,5 +1,6 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 
+pub const MAX_PLAYER_COUNT: usize = 4;
 pub const PLAYER_MAX_SPEED: f32 = 6.23;
 pub const PLAYER_ACCELERATION_RATE: f32 = 64.0;
 

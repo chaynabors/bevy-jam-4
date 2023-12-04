@@ -28,7 +28,9 @@ struct EnemyBundle {
 }
 
 #[derive(Clone, Component)]
-pub struct Enemy;
+pub struct Enemy {
+    id: u32,
+}
 
 #[derive(Resource)]
 pub struct SpawnTimer(pub Timer);
@@ -41,9 +43,15 @@ pub fn startup(
     server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    let mut id = 0;
     commands.spawn_batch(
         std::iter::repeat(EnemyBundle {
-            enemy: Enemy,
+            enemy: Enemy {
+                id: {
+                    id += 1;
+                    id
+                },
+            },
             ship: ShipBundle {
                 ship: Ship::new(4.05, 16.0),
                 pbr: PbrBundle {
