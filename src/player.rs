@@ -1,34 +1,31 @@
 use bevy::{
     pbr::{NotShadowCaster, NotShadowReceiver},
-    prelude::*,
+    prelude::*, window::PrimaryWindow,
 };
-use bevy_matchbox::matchbox_socket::PeerId;
 
-use crate::{input::InputState, net::packet::NetEvent};
+pub const PLAYER_MAX_SPEED: f32 = 6.01;
+pub const PLAYER_ACCELERATION_RATE: f32 = 1.0;
 
-pub const PLAYER_SPEED: f32 = 6.1;
+use crate::ship::{Ship, ShipBundle};
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, startup)
-            .add_systems(Update, update_player_transform);
+            .add_systems(Update, update);
     }
 }
 
 #[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
-    pub pbr: PbrBundle,
-    pub not_shadow_caster: NotShadowCaster,
-    pub not_shadow_receiver: NotShadowReceiver,
+    pub ship: ShipBundle,
 }
 
 #[derive(Component)]
 pub struct Player {
     pub health: f32,
-    pub speed: f32,
     pub damage: f32,
 }
 
@@ -36,14 +33,10 @@ impl Player {
     pub fn new() -> Self {
         Self {
             health: 100.0,
-            speed: PLAYER_SPEED,
             damage: 1.0,
         }
     }
 }
-
-#[derive(Component)]
-pub struct NetPlayer(pub PeerId);
 
 fn startup(
     mut commands: Commands,
@@ -52,40 +45,58 @@ fn startup(
 ) {
     commands.spawn(PlayerBundle {
         player: Player::new(),
-        pbr: PbrBundle {
-            mesh: server.load("ship1.glb#Mesh0/Primitive0"),
-            material: materials.add(StandardMaterial {
-                unlit: true,
+        ship: ShipBundle {
+            ship: Ship::new(PLAYER_MAX_SPEED, PLAYER_ACCELERATION_RATE),
+            pbr: PbrBundle {
+                mesh: server.load("ship1.glb#Mesh0/Primitive0"),
+                material: materials.add(StandardMaterial {
+                    unlit: true,
+                    ..default()
+                }),
+                transform: Transform::default(),
                 ..default()
-            }),
-            transform: Transform::default(),
-            ..default()
+            },
+            not_shadow_caster: NotShadowCaster,
+            not_shadow_receiver: NotShadowReceiver,
         },
-        not_shadow_caster: NotShadowCaster,
-        not_shadow_receiver: NotShadowReceiver,
     });
 }
 
-fn update_player_transform(
-    time: Res<Time>,
-    input: Res<InputState>,
-    mut player: Query<(&Player, &mut Transform), Without<NetPlayer>>,
-    mut tx_net_event: EventWriter<NetEvent>,
+fn update(
+    keys: Res<Input<KeyCode>>,
+    mut ship: Query<(&mut Ship, &Transform), With<Player>>,
+    window: Query<&Window, With<PrimaryWindow>>,
+    camera: Query<(&Camera, &GlobalTransform)>,
 ) {
-    let (player, mut transform) = player.single_mut();
+    let window = window.single();
+    let (camera, global_transform) = camera.single();
+    let (mut ship, transform) = ship.single_mut();
 
-    let dt = time.delta_seconds();
-
-    if (input.planar_cursor_position - transform.translation).length() > 0.1 {
-        transform.look_at(input.planar_cursor_position, Vec3::Y);
+    ship.move_dir = Vec3::ZERO;
+    if keys.any_pressed([KeyCode::Up, KeyCode::W]) {
+        ship.move_dir.z -= 1.0;
     }
-
-    if input.move_dir.length_squared() > 0.1 {
-        transform.translation += input.move_dir * player.speed * dt;
+    if keys.any_pressed([KeyCode::Down, KeyCode::S]) {
+        ship.move_dir.z += 1.0;
     }
+    if keys.any_pressed([KeyCode::Left, KeyCode::A]) {
+        ship.move_dir.x -= 1.0;
+    }
+    if keys.any_pressed([KeyCode::Right, KeyCode::D]) {
+        ship.move_dir.x += 1.0;
+    }
+    ship.move_dir.clamp_length_max(1.0);
 
-    tx_net_event.send(NetEvent::PlayerState {
-        position: transform.translation,
-        rotation: transform.rotation,
-    });
+    let plane_origin = Vec3::new(0.0, 0.0, 0.0);
+    let plane_normal = Vec3::new(0.0, 1.0, 0.0);
+    let Some(viewport_position) = window.cursor_position() else {
+        return;
+    };
+    let Some(ray) = camera.viewport_to_world(global_transform, viewport_position) else {
+        return;
+    };
+    let Some(distance) = ray.intersect_plane(plane_origin, plane_normal) else {
+        return;
+    };
+    ship.look_dir = (ray.get_point(distance) - transform.translation).normalize_or_zero();
 }

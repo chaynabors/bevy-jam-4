@@ -7,8 +7,8 @@ use bevy::{
 
 use crate::{
     enemy::Enemy,
-    net::packet::NetEvent,
-    player::{NetPlayer, Player},
+    net::{packet::NetEvent, PlayerPeerId},
+    player::Player,
     powerups::{PowerupSpawnEvent, PowerupType},
 };
 
@@ -120,7 +120,7 @@ fn spawn_bullets(
     time: Res<Time>,
     keys: Res<Input<KeyCode>>,
     mut timer: ResMut<BulletTimer>,
-    player: Query<(&Player, &Transform), Without<NetPlayer>>,
+    player: Query<(&Player, &Transform), Without<PlayerPeerId>>,
     mut bullets: Query<
         (&mut Transform, &mut Bullet, &mut Visibility),
         (Without<Enemy>, Without<Player>),

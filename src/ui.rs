@@ -1,9 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{
-    enemy::SpawnGeneration,
-    player::{NetPlayer, Player},
-};
+use crate::{enemy::SpawnGeneration, net::PlayerPeerId, player::Player};
 
 pub struct UiPlugin;
 
@@ -63,7 +60,7 @@ fn startup(mut commands: Commands, server: Res<AssetServer>) {
 fn update(
     mut ui_text: Query<&mut Text, With<UiText>>,
     spawn_generation: Res<SpawnGeneration>,
-    player: Query<&Player, Without<NetPlayer>>,
+    player: Query<&Player, Without<PlayerPeerId>>,
 ) {
     let player = player.single();
     for mut text in ui_text.iter_mut() {

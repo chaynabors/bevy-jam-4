@@ -2,11 +2,12 @@ mod bullet;
 mod camera;
 mod cli;
 mod enemy;
-mod input;
 mod net;
 mod player;
 mod powerups;
+mod ship;
 mod ui;
+mod util;
 
 use std::f32::consts::PI;
 
@@ -16,10 +17,10 @@ use camera::PlayerCameraPlugin;
 use clap::Parser;
 use cli::Cli;
 use enemy::EnemyPlugin;
-use input::InputPlugin;
 use net::NetPlugin;
 use player::PlayerPlugin;
 use powerups::PowerupPlugin;
+use ship::ShipPlugin;
 use ui::UiPlugin;
 
 fn main() {
@@ -37,7 +38,7 @@ fn main() {
             NetPlugin {
                 room: "test".into(),
             },
-            InputPlugin,
+            ShipPlugin,
             PlayerPlugin,
             PlayerCameraPlugin,
             EnemyPlugin,

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::player::{Player, PLAYER_SPEED};
+use crate::player::Player;
 
 #[derive(Bundle)]
 pub struct PowerupBundle {
@@ -54,7 +54,7 @@ fn update(
     time: Res<Time>,
     server: Res<AssetServer>,
 ) {
-    for (powerup_entity, mut powerup_transform, mut powerup, mut vis) in powerups.iter_mut() {
+    for (powerup_entity, mut powerup_transform, powerup, mut vis) in powerups.iter_mut() {
         powerup_transform.rotation = Quat::from_axis_angle(Vec3::Y, time.elapsed_seconds() * 2.0);
 
         for (player_entity, mut player_transform, mut player) in players.iter_mut() {
@@ -67,7 +67,7 @@ fn update(
                             player.health += 10.0;
                         }
                         PowerupType::Speed => {
-                            player.speed += PLAYER_SPEED * 0.1;
+                            // player.speed += PLAYER_SPEED * 0.1;
                         }
                         PowerupType::Damage => {
                             player.damage += 0.15;

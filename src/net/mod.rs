@@ -6,17 +6,23 @@ use bevy::{
     prelude::*,
 };
 use bevy_matchbox::{
-    matchbox_socket::{MultipleChannels, PeerState, WebRtcSocketBuilder},
+    matchbox_socket::{MultipleChannels, PeerId, PeerState, WebRtcSocketBuilder},
     MatchboxSocket,
 };
 
 use crate::{
     bullet::Bullet,
-    enemy::Enemy,
-    player::{NetPlayer, Player, PlayerBundle},
+    player::{PLAYER_ACCELERATION_RATE, PLAYER_MAX_SPEED},
+    ship::{Ship, ShipBundle},
 };
 
 use self::packet::NetEvent;
+
+#[derive(Debug, Clone, Resource)]
+pub struct PlayerId(pub usize);
+
+#[derive(Component)]
+pub struct PlayerPeerId(pub PeerId);
 
 #[derive(Debug, Clone, Resource)]
 pub struct NetData {
@@ -27,9 +33,6 @@ pub struct NetData {
 pub struct NetPlugin {
     pub room: String,
 }
-
-#[derive(Debug, Clone, Resource)]
-pub struct PlayerId(pub usize);
 
 impl Plugin for NetPlugin {
     fn build(&self, app: &mut App) {
@@ -58,11 +61,8 @@ fn update(
     mut socket: ResMut<MatchboxSocket<MultipleChannels>>,
     mut tx_net_event: EventReader<NetEvent>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut players: Query<(Entity, &Player, &mut Transform, &NetPlayer)>,
-    mut bullets: Query<
-        (&mut Transform, &mut Bullet, &mut Visibility),
-        (Without<Enemy>, Without<Player>),
-    >,
+    mut peer_ships: Query<(Entity, &Ship, &mut Transform, &PlayerPeerId)>,
+    mut bullets: Query<(&mut Transform, &mut Bullet, &mut Visibility), Without<Ship>>,
 ) {
     let peer_updates = socket.update_peers();
     for (peer_id, peer_state) in peer_updates {
@@ -71,8 +71,8 @@ fn update(
                 info!(%peer_id, "connected to peer");
 
                 commands.spawn((
-                    PlayerBundle {
-                        player: Player::new(),
+                    ShipBundle {
+                        ship: Ship::new(PLAYER_MAX_SPEED, PLAYER_ACCELERATION_RATE),
                         pbr: PbrBundle {
                             mesh: server.load("ship1.glb#Mesh0/Primitive0"),
                             material: materials.add(StandardMaterial {
@@ -85,16 +85,16 @@ fn update(
                         not_shadow_caster: NotShadowCaster,
                         not_shadow_receiver: NotShadowReceiver,
                     },
-                    NetPlayer(peer_id),
+                    PlayerPeerId(peer_id),
                 ));
             }
             PeerState::Disconnected => {
                 info!(%peer_id, "disconnected from peer");
 
                 // find player entity and despawn
-                if let Some((entity, _, _, _)) = players
+                if let Some((entity, _, _, _)) = peer_ships
                     .iter_mut()
-                    .find(|(_, _, _, NetPlayer(id))| id == &peer_id)
+                    .find(|(_, _, _, PlayerPeerId(id))| id == &peer_id)
                 {
                     commands.entity(entity).despawn();
                 }
@@ -121,9 +121,9 @@ fn update(
             match event {
                 NetEvent::PlayerState { position, rotation } => {
                     info!(%peer_id, ?position, "received player update");
-                    if let Some((_, _, mut transform, _)) = players
+                    if let Some((_, _, mut transform, _)) = peer_ships
                         .iter_mut()
-                        .find(|(_, _, _, NetPlayer(id))| id == &peer_id)
+                        .find(|(_, _, _, PlayerPeerId(id))| id == &peer_id)
                     {
                         transform.translation = position;
                         transform.rotation = rotation;
