@@ -8,33 +8,33 @@ const MAX_UNCOMPRESSED_SIZE: usize = 256;
 
 #[derive(Debug, Event)]
 pub struct Connected {
-    pub peer_id: PeerId
+    pub peer_id: PeerId,
 }
 
 #[derive(Debug, Event)]
 pub struct Disconnected {
-    pub peer_id: PeerId
+    pub peer_id: PeerId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]
 pub struct PlayerState {
-    id: PeerId,
-    position: Vec2,
-    rotation: f32,
+    pub id: PeerId,
+    pub position: Vec2,
+    pub rotation: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]
 pub struct EnemyState {
-    id: u32,
-    position: Vec2,
-    rotation: f32,
+    pub id: u32,
+    pub position: Vec2,
+    pub rotation: f32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]
 pub struct BulletState {
-    id: u32,
-    position: Vec2,
-    velocity: Vec2,
+    pub id: u32,
+    pub position: Vec2,
+    pub velocity: Vec2,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]
@@ -48,7 +48,7 @@ pub enum NetworkEvent {
 pub struct NetPacket(pub Vec<NetworkEvent>);
 
 // compress with flate if >256 bytes
-pub fn to_net_packet(data: &NetPacket) -> Box<[u8]> {
+pub fn net_packet_to_bytes(data: &NetPacket) -> Box<[u8]> {
     let mut data = bincode::serialize(data).unwrap();
     let compressed = data.len() > MAX_UNCOMPRESSED_SIZE;
     if compressed {
@@ -64,7 +64,7 @@ pub fn to_net_packet(data: &NetPacket) -> Box<[u8]> {
     data.into_boxed_slice()
 }
 
-pub fn from_net_packet(data: &[u8]) -> Option<NetPacket> {
+pub fn bytes_to_net_packet(data: &[u8]) -> Option<NetPacket> {
     let compressed = data.last().unwrap() == &1;
     let data = if compressed {
         let mut decoder = flate2::read::ZlibDecoder::new(&data[..data.len() - 1]);

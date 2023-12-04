@@ -1,17 +1,19 @@
 pub mod packet;
 
-use bevy::prelude::*;
+use bevy::{math::vec3, prelude::*};
 use bevy_matchbox::{
     matchbox_socket::{MultipleChannels, PeerId, PeerState, WebRtcSocketBuilder},
     MatchboxSocket,
 };
 
 use crate::{
+    bullet::Bullet,
+    enemy::Enemy,
     player::{PLAYER_ACCELERATION_RATE, PLAYER_MAX_SPEED},
     ship::{Ship, ShipBundle},
 };
 
-use self::packet::{NetworkEvent, EnemyState, BulletState, Connected, Disconnected, PlayerState};
+use self::packet::{BulletState, Connected, Disconnected, EnemyState, NetworkEvent, PlayerState};
 
 #[derive(Debug, Clone, Eq, PartialEq, Resource)]
 pub enum ServerState {
@@ -45,7 +47,21 @@ impl Plugin for NetPlugin {
         .add_event::<NetworkEvent>()
         .add_event::<Connected>()
         .add_event::<Disconnected>()
-        .add_systems(Startup, startup);
+        .add_event::<PlayerState>()
+        .add_event::<EnemyState>()
+        .add_event::<BulletState>()
+        .add_systems(Startup, startup)
+        .add_systems(
+            Update,
+            (
+                read_events,
+                connected_handler,
+                disconnected_handler,
+                player_state_handler,
+                enemy_state_handler,
+                bullet_state_handler,
+            ),
+        );
     }
 }
 
@@ -75,8 +91,10 @@ fn read_events(
     if *state == ServerState::Unknown {
         if socket.connected_peers().count() > 0 {
             *state = ServerState::Host;
+            info!("hosting game");
         } else {
             *state = ServerState::Client;
+            info!("joining game");
         }
     }
 
@@ -94,7 +112,7 @@ fn read_events(
     }
 
     for (peer_id, data) in socket.get_channel(0).unwrap().receive() {
-        if let Some(net_packet) = packet::from_net_packet(&data) {
+        if let Some(net_packet) = packet::bytes_to_net_packet(&data) {
             for packet in net_packet.0 {
                 match packet {
                     NetworkEvent::PlayerState(state) => write_player_state.send(state),
@@ -107,7 +125,7 @@ fn read_events(
 
     let events = read_events.read().cloned().collect::<Vec<_>>();
     if !events.is_empty() {
-        let net_packet = packet::to_net_packet(&packet::NetPacket(events));
+        let net_packet = packet::net_packet_to_bytes(&packet::NetPacket(events));
         let peers = socket.connected_peers().collect::<Vec<_>>();
         for peer_id in peers {
             socket
@@ -121,8 +139,8 @@ fn read_events(
 fn connected_handler(
     mut commands: Commands,
     mut reader: EventReader<Connected>,
-    server: Res<AssetServer>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    server: Res<AssetServer>,
 ) {
     for event in reader.read() {
         commands.spawn((
@@ -159,29 +177,40 @@ fn disconnected_handler(
     }
 }
 
-fn player_state_handler() {
-    // info!(%peer_id, ?position, "received player update");
-    // if let Some((_, _, mut transform, _)) = peer_ships
-    //     .iter_mut()
-    //     .find(|(_, _, _, PlayerPeerId(id))| id == &peer_id)
-    // {
-    //     transform.translation = vec3(position.x, 0.0, position.y);
-    //     transform.rotation = Quat::from_rotation_y(rotation);
-    // }
+fn player_state_handler(
+    mut peer_ships: Query<(Entity, &Ship, &mut Transform, &PlayerPeerId)>,
+    mut reader: EventReader<PlayerState>,
+) {
+    for event in reader.read() {
+        if let Some((_, _, mut transform, _)) = peer_ships
+            .iter_mut()
+            .find(|(_, _, _, PlayerPeerId(id))| id == &event.id)
+        {
+            transform.translation = vec3(event.position.x, 0.0, event.position.y);
+            transform.rotation = Quat::from_rotation_y(event.rotation);
+        }
+    }
 }
 
-fn bullet_state_handler() {
-    // for (mut transform, mut bullet, mut visibility) in bullets.iter_mut() {
-    //     if *visibility == Visibility::Hidden {
-    //         *visibility = Visibility::Visible;
-    //         transform.translation = vec3(position.x, 0.5, position.y);
-    //         bullet.velocity = velocity;
-    //         bullet.ttl = 2.0;
-    //         break;
-    //     }
-    // }
+fn bullet_state_handler(
+    mut bullets: Query<(&mut Transform, &mut Bullet, &mut Visibility)>,
+    mut reader: EventReader<BulletState>,
+) {
+    for event in reader.read() {
+        for (mut transform, mut bullet, mut visibility) in bullets.iter_mut() {
+            if *visibility == Visibility::Hidden {
+                *visibility = Visibility::Visible;
+                transform.translation = vec3(event.position.x, 0.5, event.position.y);
+                bullet.velocity = event.velocity;
+                bullet.ttl = 2.0;
+                break;
+            }
+        }
+    }
 }
 
-fn enemy_state_handler() {
-
+fn enemy_state_handler(
+    mut enemies: Query<(&mut Ship, &Transform, &Visibility), With<Enemy>>,
+    mut reader: EventReader<EnemyState>,
+) {
 }
