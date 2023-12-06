@@ -22,13 +22,15 @@ pub struct Ship {
     pub look_dir: Vec3,
     pub max_speed: f32,
     pub acceleration_rate: f32,
+    pub drag_coefficient: f32,
 }
 
 impl Ship {
-    pub fn new(max_speed: f32, acceleration_rate: f32) -> Self {
+    pub fn new(max_speed: f32, acceleration_rate: f32, drag_coefficient: f32) -> Self {
         Self {
             max_speed,
             acceleration_rate,
+            drag_coefficient,
             ..Default::default()
         }
     }
@@ -43,7 +45,8 @@ fn update_transforms(time: Res<Time>, mut ships: Query<(&mut Ship, &mut Transfor
     for (mut ship, mut transform) in &mut ships {
         transform.translation =
             transform.translation + ship.velocity * dt + 0.5 * ship.acceleration * dt * dt;
-        let new_acceleration = ship.move_dir.clamp_length_max(1.0) * ship.acceleration_rate;
+        let mut new_acceleration = ship.move_dir.clamp_length_max(1.0) * ship.acceleration_rate;
+        new_acceleration -= ship.velocity * ship.drag_coefficient;
         ship.velocity = (ship.velocity + 0.5 * (ship.acceleration + new_acceleration) * dt)
             .clamp_length_max(ship.max_speed);
         ship.acceleration = new_acceleration;
@@ -51,6 +54,11 @@ fn update_transforms(time: Res<Time>, mut ships: Query<(&mut Ship, &mut Transfor
         let look_dir = ship.look_dir.normalize_or_zero();
         if look_dir != Vec3::ZERO {
             transform.look_to(look_dir, Vec3::Y);
+
+            transform.rotate_axis(
+                ship.acceleration.cross(Vec3::NEG_Y).normalize_or_zero(),
+                ship.acceleration.length() * 0.005,
+            );
         }
     }
 }

@@ -3,6 +3,7 @@ use std::time::Duration;
 use bevy::{math::vec3, prelude::*};
 
 use crate::{
+    constants::{CHASER_ACCELERATION_RATE, CHASER_DRAG_COEFFICIENT, CHASER_MAX_SPEED},
     player::Player,
     ship::{Ship, ShipBundle},
 };
@@ -53,7 +54,11 @@ pub fn startup(
                 },
             },
             ship: ShipBundle {
-                ship: Ship::new(4.05, 16.0),
+                ship: Ship::new(
+                    CHASER_MAX_SPEED,
+                    CHASER_ACCELERATION_RATE,
+                    CHASER_DRAG_COEFFICIENT,
+                ),
                 pbr: PbrBundle {
                     mesh: server.load("enemy1.glb#Mesh0/Primitive0"),
                     material: materials.add(StandardMaterial {

@@ -1,7 +1,9 @@
 mod bullet;
 mod camera;
 mod cli;
+mod constants;
 mod enemy;
+mod line_material;
 mod net;
 mod player;
 mod powerups;
@@ -11,12 +13,13 @@ mod util;
 
 use std::f32::consts::PI;
 
-use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
+use bevy::{math::vec3, pbr::CascadeShadowConfigBuilder, prelude::*};
 use bullet::BulletPlugin;
 use camera::PlayerCameraPlugin;
 use clap::Parser;
 use cli::Cli;
 use enemy::EnemyPlugin;
+use line_material::LineMaterial;
 use net::NetPlugin;
 use player::PlayerPlugin;
 use powerups::PowerupPlugin;
@@ -35,6 +38,7 @@ fn main() {
                 }),
                 ..default()
             }),
+            MaterialPlugin::<LineMaterial>::default(),
             NetPlugin {
                 room: "test".into(),
             },
@@ -53,44 +57,18 @@ fn main() {
 
 fn setup(
     mut commands: Commands,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut line_materials: ResMut<Assets<LineMaterial>>,
     server: Res<AssetServer>,
 ) {
     // Floor
     let floor_mesh: Handle<Mesh> = server.load("floor.glb#Mesh0/Primitive0");
-    let floor_material = materials.add(StandardMaterial {
-        unlit: true,
-        fog_enabled: true,
-        ..default()
-    });
+    let floor_material = line_materials.add(LineMaterial {});
 
-    commands.spawn(PbrBundle {
+    commands.spawn(MaterialMeshBundle {
         mesh: floor_mesh,
         material: floor_material,
+        transform: Transform::from_translation(vec3(0.0, -1.0, 0.0)),
         ..Default::default()
-    });
-
-    // Sun
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform {
-            translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_rotation_x(-PI / 4.),
-            ..default()
-        },
-        // The default cascade config is designed to handle large scenes.
-        // As this example has a much smaller world, we can tighten the shadow
-        // bounds for better visual quality.
-        cascade_shadow_config: CascadeShadowConfigBuilder {
-            first_cascade_far_bound: 4.0,
-            maximum_distance: 10.0,
-            ..default()
-        }
-        .into(),
-        ..default()
     });
 
     powerups::spawn_powerup(

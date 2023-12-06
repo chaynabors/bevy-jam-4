@@ -1,4 +1,4 @@
-use bevy::{math::vec3, prelude::*};
+use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*};
 
 use crate::player::Player;
 
@@ -12,7 +12,10 @@ impl Plugin for PlayerCameraPlugin {
 }
 
 fn spawn_camera(mut commands: Commands) {
-    commands.spawn(Camera3dBundle::default());
+    commands.spawn(Camera3dBundle {
+        tonemapping: Tonemapping::None,
+        ..default()
+    });
 }
 
 fn update_camera(
@@ -21,7 +24,6 @@ fn update_camera(
 ) {
     let transform = player.single();
 
-    *camera.single_mut() =
-        Transform::from_translation(transform.translation + vec3(0.0, 1.5, 1.0).normalize() * 20.0)
-            .looking_at(transform.translation, Vec3::Y);
+    *camera.single_mut() = Transform::from_translation(transform.translation + Vec3::Y * 30.0)
+        .looking_at(transform.translation, Vec3::NEG_Z);
 }

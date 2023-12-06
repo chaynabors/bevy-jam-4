@@ -140,7 +140,10 @@ fn spawn_bullets(
 
         let position = vec2(transform.translation.x, transform.translation.z);
 
-        let forward = transform.forward();
+        let mut forward = transform.forward();
+        forward.y = 0.0;
+        forward = forward.normalize_or_zero();
+
         let velocity = vec2(
             forward.x + fastrand::f32() * spread - spread / 2.0,
             forward.z + fastrand::f32() * spread - spread / 2.0,

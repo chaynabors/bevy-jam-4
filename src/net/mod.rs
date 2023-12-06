@@ -8,8 +8,8 @@ use bevy_matchbox::{
 
 use crate::{
     bullet::Bullet,
+    constants::{PLAYER_ACCELERATION_RATE, PLAYER_DRAG_COEFFICIENT, PLAYER_MAX_SPEED},
     enemy::Enemy,
-    player::{PLAYER_ACCELERATION_RATE, PLAYER_MAX_SPEED},
     ship::{Ship, ShipBundle},
 };
 
@@ -145,7 +145,11 @@ fn connected_handler(
     for event in reader.read() {
         commands.spawn((
             ShipBundle {
-                ship: Ship::new(PLAYER_MAX_SPEED, PLAYER_ACCELERATION_RATE),
+                ship: Ship::new(
+                    PLAYER_MAX_SPEED,
+                    PLAYER_ACCELERATION_RATE,
+                    PLAYER_DRAG_COEFFICIENT,
+                ),
                 pbr: PbrBundle {
                     mesh: server.load("ship1.glb#Mesh0/Primitive0"),
                     material: materials.add(StandardMaterial {
