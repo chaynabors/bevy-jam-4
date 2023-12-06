@@ -2,8 +2,10 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::{
     constants::{PLAYER_ACCELERATION_RATE, PLAYER_DRAG_COEFFICIENT, PLAYER_MAX_SPEED},
+    materials::{GridMaterial, ShipMaterial, SpaceMaterial},
     net::{packet::PlayerState, PlayerId, PlayerPeerId},
     ship::{Ship, ShipBundle},
+    Materials,
 };
 
 pub struct PlayerPlugin;
@@ -25,6 +27,7 @@ pub struct PlayerBundle {
 pub struct Player {
     pub health: f32,
     pub damage: f32,
+    pub gun: u32,
 }
 
 impl Player {
@@ -32,15 +35,12 @@ impl Player {
         Self {
             health: 100.0,
             damage: 1.0,
+            gun: 0,
         }
     }
 }
 
-fn startup(
-    mut commands: Commands,
-    server: Res<AssetServer>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+fn startup(mut commands: Commands, server: Res<AssetServer>, materials: Res<Materials>) {
     commands.spawn(PlayerBundle {
         player: Player::new(),
         ship: ShipBundle {
@@ -49,14 +49,10 @@ fn startup(
                 PLAYER_ACCELERATION_RATE,
                 PLAYER_DRAG_COEFFICIENT,
             ),
-            pbr: PbrBundle {
-                mesh: server.load("ship1.glb#Mesh0/Primitive0"),
-                material: materials.add(StandardMaterial {
-                    unlit: true,
-                    ..default()
-                }),
-                transform: Transform::default(),
-                ..default()
+            material_mesh: MaterialMeshBundle {
+                mesh: server.load("player2.glb#Mesh0/Primitive0"),
+                material: materials.ship_material.clone().unwrap(),
+                ..Default::default()
             },
         },
     });
@@ -64,6 +60,10 @@ fn startup(
 
 fn update(
     keys: Res<Input<KeyCode>>,
+    materials: Res<Materials>,
+    mut ship_materials: ResMut<Assets<ShipMaterial>>,
+    mut space_materials: ResMut<Assets<SpaceMaterial>>,
+    mut line_materials: ResMut<Assets<GridMaterial>>,
     mut ship: Query<(&mut Ship, &Transform), (With<Player>, Without<PlayerPeerId>)>,
     window: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform)>,
@@ -101,5 +101,15 @@ fn update(
     };
     ship.look_dir = ray.get_point(distance) - transform.translation;
 
-    // materials.get(id)
+    if let Some(ship) = &materials.ship_material {
+        ship_materials.get_mut(ship.id()).unwrap().player_position = transform.translation.xz();
+    }
+
+    if let Some(line) = &materials.grid_material {
+        line_materials.get_mut(line.id()).unwrap().player_position = transform.translation.xz();
+    }
+
+    if let Some(space) = &materials.space_material {
+        space_materials.get_mut(space.id()).unwrap().player_position = transform.translation.xz();
+    }
 }

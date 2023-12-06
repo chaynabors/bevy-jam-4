@@ -9,6 +9,7 @@ use bevy_matchbox::{
 use crate::{
     constants::{PLAYER_ACCELERATION_RATE, PLAYER_DRAG_COEFFICIENT, PLAYER_MAX_SPEED},
     ship::{Ship, ShipBundle},
+    Materials,
 };
 
 use self::packet::{BulletState, Connected, Disconnected, EnemyState, NetworkEvent, PlayerState};
@@ -135,7 +136,7 @@ fn read_events(
 fn connected_handler(
     mut commands: Commands,
     mut reader: EventReader<Connected>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    materials: Res<Materials>,
     server: Res<AssetServer>,
 ) {
     for event in reader.read() {
@@ -146,14 +147,10 @@ fn connected_handler(
                     PLAYER_ACCELERATION_RATE,
                     PLAYER_DRAG_COEFFICIENT,
                 ),
-                pbr: PbrBundle {
-                    mesh: server.load("ship1.glb#Mesh0/Primitive0"),
-                    material: materials.add(StandardMaterial {
-                        unlit: true,
-                        ..default()
-                    }),
-                    transform: Transform::default(),
-                    ..default()
+                material_mesh: MaterialMeshBundle {
+                    mesh: server.load("player2.glb#Mesh0/Primitive0"),
+                    material: materials.ship_material.clone().unwrap(),
+                    ..Default::default()
                 },
             },
             PlayerPeerId(event.peer_id),

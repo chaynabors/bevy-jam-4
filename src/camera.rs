@@ -1,6 +1,6 @@
 use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*};
 
-use crate::{player::Player, net::PlayerPeerId};
+use crate::{net::PlayerPeerId, player::Player};
 
 pub struct PlayerCameraPlugin;
 
@@ -24,6 +24,8 @@ fn update_camera(
 ) {
     let transform = player.single();
 
-    *camera.single_mut() = Transform::from_translation(transform.translation + Vec3::Y * 30.0)
-        .looking_at(transform.translation, Vec3::NEG_Z);
+    *camera.single_mut() = Transform::from_translation(
+        transform.translation + Vec3::new(0.0, 1.0, 0.5).normalize() * 40.0,
+    )
+    .looking_at(transform.translation, Vec3::NEG_Z);
 }

@@ -1,18 +1,23 @@
+// Star Nest by Pablo RomÃ¡n Andrioli modified by Chay Nabors
+// originally copied from https://www.shadertoy.com/view/XlfGRj
+//
+// This content is under the MIT License.
+
 #import bevy_pbr::{
     mesh_view_bindings::globals,
     forward_io::VertexOutput
 }
 
-struct LineMaterial {
-    time: f32,
+struct Material {
+    player_position: vec2<f32>,
 };
 
-@group(1) @binding(0) var<uniform> material: LineMaterial;
+@group(1) @binding(0) var<uniform> material: Material;
 
-const ITERATIONS: i32 = 12;
+const ITERATIONS: i32 = 15;
 const FORMUPARAM: f32 = 0.53;
 
-const VOLSTEPS: i32 = 20;
+const VOLSTEPS: i32 = 5;
 const STEPSIZE: f32 = 0.1;
 
 const ZOOM: f32 = 2.000;
@@ -22,7 +27,7 @@ const SPEED: f32 = 0.010;
 const BRIGHTNESS: f32 = 0.0015;
 const DARKMATTER: f32 = 0.300;
 const DISTFADING: f32 = 0.730;
-const SATURATION: f32 = 0.850;
+const SATURATION: f32 = 0.250;
 
 @fragment
 fn fragment(
@@ -30,10 +35,7 @@ fn fragment(
 ) -> @location(0) vec4<f32> {
 	// get coords and direction
 	var rd = vec3(mesh.uv * ZOOM, 1.0);
-	let time = globals.time * SPEED * 0.25;
-
-	var ro = vec3(1.0, 0.5, 0.5);
-	ro += vec3(time * 2.0, time, -2.0);
+	var ro = vec3(material.player_position, globals.time * 0.5) * 0.001 + vec3(1000.0, 500.0, 0.0);
 
 	//volumetric rendering
 	var s = 0.1;
@@ -62,5 +64,5 @@ fn fragment(
 	}
 	v = mix(vec3(length(v)), v, SATURATION); //color adjust
 
-	return vec4(pow(vec3(v * 0.01), vec3(2.2)), 1.0);
+	return vec4(pow(vec3(v * 0.005), vec3(2.2)), 1.0);
 }

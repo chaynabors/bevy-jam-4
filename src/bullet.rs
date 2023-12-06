@@ -129,23 +129,31 @@ fn spawn_bullets(
     time: Res<Time>,
     keys: Res<Input<KeyCode>>,
     mut timer: ResMut<BulletTimer>,
-    player: Query<(&Player, &Transform), Without<PlayerPeerId>>,
+    mut player: Query<(&mut Player, &Transform), Without<PlayerPeerId>>,
     mut bullets: Query<
         (&mut Transform, &mut Bullet, &mut Visibility),
         (Without<Enemy>, Without<Player>),
     >,
 ) {
-    let (player, transform) = player.single();
+    let (mut player, transform) = player.single_mut();
 
     timer.0.tick(time.delta());
     if keys.any_pressed([KeyCode::Space]) && timer.0.finished() {
         let spread = 0.10;
 
-        let position = vec2(transform.translation.x, transform.translation.z);
+        player.gun = (player.gun + 1) % 2;
 
-        let mut forward = transform.forward();
+        let mut position = transform.translation.xz();
+        let mut forward = transform.forward() * 0.3;
+        position += forward.xz();
         forward.y = 0.0;
         forward = forward.normalize_or_zero();
+
+        let mut side = transform.right() * 0.65;
+        if player.gun != 0 {
+            side *= -1.0;
+        }
+        position += side.xz();
 
         let velocity = vec2(
             forward.x + fastrand::f32() * spread - spread / 2.0,

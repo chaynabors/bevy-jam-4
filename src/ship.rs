@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::materials::ShipMaterial;
 use crate::{
     net::{
         packet::{NetworkEvent, PlayerState},
@@ -26,7 +27,7 @@ impl Plugin for ShipPlugin {
 #[derive(Bundle, Clone)]
 pub struct ShipBundle {
     pub ship: Ship,
-    pub pbr: PbrBundle,
+    pub material_mesh: MaterialMeshBundle<ShipMaterial>,
 }
 
 #[derive(Clone, Component, Default)]

@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use bevy::{math::{vec3, vec2}, prelude::*};
+use bevy::{
+    math::{vec2, vec3},
+    prelude::*,
+};
 
 use crate::{
     constants::{CHASER_ACCELERATION_RATE, CHASER_DRAG_COEFFICIENT, CHASER_MAX_SPEED},
@@ -10,6 +13,7 @@ use crate::{
     },
     player::Player,
     ship::{Ship, ShipBundle},
+    Materials,
 };
 
 const MAX_ENEMY_COUNT: usize = 1024;
@@ -51,16 +55,9 @@ pub struct SpawnTimer(pub Timer);
 #[derive(Resource)]
 pub struct SpawnGeneration(pub usize);
 
-pub fn startup(
-    mut commands: Commands,
-    server: Res<AssetServer>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
+pub fn startup(mut commands: Commands, server: Res<AssetServer>, materials: ResMut<Materials>) {
     let mesh = server.load("enemy1.glb#Mesh0/Primitive0");
-    let material = materials.add(StandardMaterial {
-        unlit: true,
-        ..default()
-    });
+    let material = materials.ship_material.clone().unwrap();
     commands.spawn_batch((0..MAX_ENEMY_COUNT).map(move |i| EnemyBundle {
         enemy: Enemy { id: i as u32 },
         ship: ShipBundle {
@@ -69,12 +66,11 @@ pub fn startup(
                 CHASER_ACCELERATION_RATE,
                 CHASER_DRAG_COEFFICIENT,
             ),
-            pbr: PbrBundle {
+            material_mesh: MaterialMeshBundle {
                 mesh: mesh.clone(),
                 material: material.clone(),
-                transform: Transform::default(),
                 visibility: Visibility::Hidden,
-                ..default()
+                ..Default::default()
             },
         },
     }))
