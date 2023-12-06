@@ -2,7 +2,7 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::{
     constants::{PLAYER_ACCELERATION_RATE, PLAYER_DRAG_COEFFICIENT, PLAYER_MAX_SPEED},
-    ship::{Ship, ShipBundle},
+    ship::{Ship, ShipBundle}, line_material::LineMaterial, MaterialHandles,
 };
 
 pub struct PlayerPlugin;
@@ -63,6 +63,8 @@ fn startup(
 
 fn update(
     keys: Res<Input<KeyCode>>,
+    materials: Res<Assets<LineMaterial>>,
+    material_handles: Res<MaterialHandles>,
     mut ship: Query<(&mut Ship, &Transform), With<Player>>,
     window: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform)>,
@@ -97,4 +99,6 @@ fn update(
         return;
     };
     ship.look_dir = ray.get_point(distance) - transform.translation;
+
+    // materials.get(id)
 }

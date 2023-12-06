@@ -11,9 +11,7 @@ mod ship;
 mod ui;
 mod util;
 
-use std::f32::consts::PI;
-
-use bevy::{math::vec3, pbr::CascadeShadowConfigBuilder, prelude::*};
+use bevy::{math::vec3, prelude::*};
 use bullet::BulletPlugin;
 use camera::PlayerCameraPlugin;
 use clap::Parser;
@@ -25,6 +23,11 @@ use player::PlayerPlugin;
 use powerups::PowerupPlugin;
 use ship::ShipPlugin;
 use ui::UiPlugin;
+
+#[derive(Debug, Default, Resource)]
+struct MaterialHandles {
+    floor_handle: Option<Handle<LineMaterial>>,
+}
 
 fn main() {
     let Cli { server: _ } = Cli::parse();
@@ -51,6 +54,7 @@ fn main() {
             UiPlugin,
         ))
         .insert_resource(ClearColor(Color::BLACK))
+        .insert_resource(MaterialHandles::default())
         .add_systems(Startup, setup)
         .run();
 }
