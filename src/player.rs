@@ -2,7 +2,8 @@ use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::{
     constants::{PLAYER_ACCELERATION_RATE, PLAYER_DRAG_COEFFICIENT, PLAYER_MAX_SPEED},
-    ship::{Ship, ShipBundle}, line_material::LineMaterial, MaterialHandles,
+    net::{packet::PlayerState, PlayerId, PlayerPeerId},
+    ship::{Ship, ShipBundle},
 };
 
 pub struct PlayerPlugin;
@@ -63,11 +64,11 @@ fn startup(
 
 fn update(
     keys: Res<Input<KeyCode>>,
-    materials: Res<Assets<LineMaterial>>,
-    material_handles: Res<MaterialHandles>,
-    mut ship: Query<(&mut Ship, &Transform), With<Player>>,
+    mut ship: Query<(&mut Ship, &Transform), (With<Player>, Without<PlayerPeerId>)>,
     window: Query<&Window, With<PrimaryWindow>>,
     camera: Query<(&Camera, &GlobalTransform)>,
+    mut player_state_writer: EventWriter<PlayerState>,
+    player_id: Res<PlayerId>,
 ) {
     let window = window.single();
     let (camera, global_transform) = camera.single();

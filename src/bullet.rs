@@ -7,12 +7,15 @@ use bevy::{
 
 use crate::{
     enemy::Enemy,
-    net::PlayerPeerId,
+    net::{
+        packet::{BulletState, NetworkEvent},
+        PlayerPeerId, ServerState,
+    },
     player::Player,
     powerups::{PowerupSpawnEvent, PowerupType},
 };
 
-pub const MAX_BULLET_COUNT: usize = 1024 * 16;
+pub const MAX_BULLET_COUNT: usize = 1024;
 
 #[derive(Debug)]
 pub struct BulletPlugin;
@@ -21,7 +24,15 @@ impl Plugin for BulletPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(BulletTimer(Timer::from_seconds(0.1, TimerMode::Once)))
             .add_systems(Startup, startup)
-            .add_systems(Update, (update, spawn_bullets));
+            .add_systems(
+                Update,
+                (
+                    update,
+                    spawn_bullets,
+                    net_write.after(spawn_bullets).after(update),
+                    net_read,
+                ),
+            );
     }
 }
 
@@ -30,7 +41,7 @@ struct BulletTimer(pub Timer);
 
 #[derive(Component, Clone)]
 pub struct Bullet {
-    pub id: u64,
+    pub id: u32,
     pub velocity: Vec2,
     pub ttl: f32,
     pub damage: f32,
@@ -55,29 +66,22 @@ fn startup(
         ..default()
     });
 
-    let mut id = 0;
-    commands.spawn_batch(
-        std::iter::repeat(BulletBundle {
-            bullet: Bullet {
-                id: {
-                    id += 1;
-                    id
-                },
-                velocity: vec2(0.0, 0.0),
-                ttl: 2.0,
-                damage: 1.0,
-                speed: 30.0,
-            },
-            pbr: PbrBundle {
-                mesh,
-                material,
-                transform: Transform::default().with_scale(Vec3::splat(0.1)),
-                visibility: Visibility::Hidden,
-                ..default()
-            },
-        })
-        .take(MAX_BULLET_COUNT),
-    );
+    commands.spawn_batch((0..MAX_BULLET_COUNT).map(move |i| BulletBundle {
+        bullet: Bullet {
+            id: i as u32,
+            velocity: vec2(0.0, 0.0),
+            ttl: 2.0,
+            damage: 1.0,
+            speed: 30.0,
+        },
+        pbr: PbrBundle {
+            mesh: mesh.clone(),
+            material: material.clone(),
+            transform: Transform::default().with_scale(Vec3::splat(0.1)),
+            visibility: Visibility::Hidden,
+            ..default()
+        },
+    }));
 }
 
 fn update(
@@ -122,7 +126,6 @@ fn update(
 }
 
 fn spawn_bullets(
-    // mut tx_net_event: EventWriter<NetEvent>,
     time: Res<Time>,
     keys: Res<Input<KeyCode>>,
     mut timer: ResMut<BulletTimer>,
@@ -155,13 +158,6 @@ fn spawn_bullets(
                 transform.translation = vec3(position.x, 0.5, position.y);
                 bullet.velocity = velocity;
                 bullet.ttl = 2.0;
-
-                // tx_net_event.send(NetEvent::BulletState {
-                //     id: bullet.id,
-                //     position,
-                //     velocity,
-                // });
-
                 break;
             }
         }
@@ -171,5 +167,45 @@ fn spawn_bullets(
             .set_duration(Duration::from_secs_f32(0.1 / player.damage));
 
         timer.0.reset();
+    }
+}
+
+fn net_write(
+    status: Res<ServerState>,
+    bullet_query: Query<(&Transform, &Visibility, &Bullet)>,
+    mut net_event_writer: EventWriter<NetworkEvent>,
+) {
+    if *status == ServerState::Host {
+        net_event_writer.send_batch(bullet_query.iter().map(|(transform, visibility, bullet)| {
+            NetworkEvent::BulletState(BulletState {
+                id: bullet.id,
+                position: vec2(transform.translation.x, transform.translation.z),
+                velocity: bullet.velocity,
+                visible: *visibility == Visibility::Visible,
+            })
+        }));
+    }
+}
+
+fn net_read(
+    status: Res<ServerState>,
+    mut net_event_reader: EventReader<BulletState>,
+    mut bullet_query: Query<(&mut Transform, &mut Visibility, &mut Bullet)>,
+) {
+    if *status == ServerState::Client {
+        let mut ships = bullet_query.iter_mut().collect::<Vec<_>>();
+        ships.sort_by_key(|(_, _, enemy)| enemy.id);
+
+        for event in net_event_reader.read() {
+            let (transform, visibility, bullet) = ships.get_mut(event.id as usize).unwrap();
+            transform.translation = vec3(event.position.x, 0.0, event.position.y);
+            **visibility = if event.visible {
+                Visibility::Visible
+            } else {
+                Visibility::Hidden
+            };
+            bullet.velocity = event.velocity;
+            bullet.ttl = 2.0;
+        }
     }
 }

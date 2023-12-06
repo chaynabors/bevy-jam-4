@@ -1,10 +1,25 @@
 use bevy::prelude::*;
 
+use crate::{
+    net::{
+        packet::{NetworkEvent, PlayerState},
+        PlayerId, PlayerPeerId, ServerState,
+    },
+    player::Player,
+};
+
 pub struct ShipPlugin;
 
 impl Plugin for ShipPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_systems(Update, update_transforms);
+        app.add_systems(
+            Update,
+            (
+                net_read,
+                update_transforms.after(net_read),
+                net_write.after(update_transforms),
+            ),
+        );
     }
 }
 
@@ -37,6 +52,53 @@ impl Ship {
 
     pub fn velocity(&self) -> Vec3 {
         self.velocity
+    }
+}
+
+fn net_write(
+    status: Res<ServerState>,
+    mut write_player_state: EventWriter<NetworkEvent>,
+    player_query: Query<(&Player, &Transform, Option<&PlayerPeerId>)>,
+    player_id: Res<PlayerId>,
+) {
+    if *status == ServerState::Host {
+        write_player_state.send_batch(player_query.iter().filter_map(
+            |(player, transform, player_peer_id)| {
+                Some(NetworkEvent::PlayerState(PlayerState {
+                    id: player_peer_id.map(|p| p.0).unwrap_or(player_id.0?),
+                    position: transform.translation,
+                    rotation: transform.rotation,
+                }))
+            },
+        ));
+    }
+
+    // only write local player state
+    if *status == ServerState::Client {
+        if let Some(player_peer_id) = player_id.0 {
+            let player = player_query.iter().find(|(_, _, p)| p.is_none());
+            if let Some((_, transform, _)) = player {
+                write_player_state.send(NetworkEvent::PlayerState(PlayerState {
+                    id: player_peer_id,
+                    position: transform.translation,
+                    rotation: transform.rotation,
+                }));
+            }
+        }
+    }
+}
+
+fn net_read(
+    mut read_player_state: EventReader<PlayerState>,
+    mut player_query: Query<(&mut Transform, &PlayerPeerId)>,
+) {
+    for player_state in read_player_state.read() {
+        for (mut transform, player_peer_id) in player_query.iter_mut() {
+            if player_peer_id.0 == player_state.id {
+                transform.translation = player_state.position;
+                transform.rotation = player_state.rotation;
+            }
+        }
     }
 }
 

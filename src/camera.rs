@@ -1,6 +1,6 @@
 use bevy::{core_pipeline::tonemapping::Tonemapping, prelude::*};
 
-use crate::player::Player;
+use crate::{player::Player, net::PlayerPeerId};
 
 pub struct PlayerCameraPlugin;
 
@@ -20,7 +20,7 @@ fn spawn_camera(mut commands: Commands) {
 
 fn update_camera(
     mut camera: Query<&mut Transform, With<Camera>>,
-    player: Query<&Transform, (With<Player>, Without<Camera>)>,
+    player: Query<&Transform, (With<Player>, Without<Camera>, Without<PlayerPeerId>)>,
 ) {
     let transform = player.single();
 

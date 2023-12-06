@@ -1,6 +1,9 @@
 use std::io::{Read as _, Write as _};
 
-use bevy::{ecs::event::Event, math::Vec2};
+use bevy::{
+    ecs::event::Event,
+    math::{Quat, Vec2, Vec3},
+};
 use bevy_matchbox::matchbox_socket::PeerId;
 use serde::{Deserialize, Serialize};
 
@@ -19,15 +22,15 @@ pub struct Disconnected {
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]
 pub struct PlayerState {
     pub id: PeerId,
-    pub position: Vec2,
-    pub rotation: f32,
+    pub position: Vec3,
+    pub rotation: Quat,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]
 pub struct EnemyState {
-    pub id: u32,
+    pub id: u16,
     pub position: Vec2,
-    pub rotation: f32,
+    pub visible: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]
@@ -35,6 +38,7 @@ pub struct BulletState {
     pub id: u32,
     pub position: Vec2,
     pub velocity: Vec2,
+    pub visible: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Event)]

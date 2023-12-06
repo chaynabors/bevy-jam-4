@@ -1,15 +1,13 @@
 pub mod packet;
 
-use bevy::{math::vec3, prelude::*};
+use bevy::prelude::*;
 use bevy_matchbox::{
     matchbox_socket::{MultipleChannels, PeerId, PeerState, WebRtcSocketBuilder},
     MatchboxSocket,
 };
 
 use crate::{
-    bullet::Bullet,
     constants::{PLAYER_ACCELERATION_RATE, PLAYER_DRAG_COEFFICIENT, PLAYER_MAX_SPEED},
-    enemy::Enemy,
     ship::{Ship, ShipBundle},
 };
 
@@ -23,9 +21,9 @@ pub enum ServerState {
 }
 
 #[derive(Debug, Clone, Resource)]
-pub struct PlayerId(pub usize);
+pub struct PlayerId(pub Option<PeerId>);
 
-#[derive(Component)]
+#[derive(Component, Debug, Clone)]
 pub struct PlayerPeerId(pub PeerId);
 
 #[derive(Debug, Clone, Resource)]
@@ -44,6 +42,7 @@ impl Plugin for NetPlugin {
             room: self.room.clone(),
         })
         .insert_resource(ServerState::Unknown)
+        .insert_resource(PlayerId(None))
         .add_event::<NetworkEvent>()
         .add_event::<Connected>()
         .add_event::<Disconnected>()
@@ -53,20 +52,14 @@ impl Plugin for NetPlugin {
         .add_systems(Startup, startup)
         .add_systems(
             Update,
-            (
-                read_events,
-                connected_handler,
-                disconnected_handler,
-                player_state_handler,
-                enemy_state_handler,
-                bullet_state_handler,
-            ),
+            (read_events, connected_handler, disconnected_handler),
         );
     }
 }
 
-fn startup(mut commands: Commands, net_data: Res<NetData>) {
-    let room_url = "wss://bevy-jam-4.fly.dev";
+fn startup(mut commands: Commands, _net_data: Res<NetData>) {
+    // let room_url = "wss://bevy-jam-4.fly.dev";
+    let room_url = "ws://[::]:3536";
     info!(%room_url, "connecting to matchbox server");
 
     commands.insert_resource(MatchboxSocket::from(
@@ -79,6 +72,7 @@ fn startup(mut commands: Commands, net_data: Res<NetData>) {
 fn read_events(
     mut state: ResMut<ServerState>,
     mut socket: ResMut<MatchboxSocket<MultipleChannels>>,
+    mut player_id: ResMut<PlayerId>,
     mut read_events: EventReader<NetworkEvent>,
     mut write_connected: EventWriter<Connected>,
     mut write_disconnected: EventWriter<Disconnected>,
@@ -88,8 +82,10 @@ fn read_events(
 ) {
     let peer_updates = socket.update_peers();
 
+    *player_id = PlayerId(socket.id());
+
     if *state == ServerState::Unknown {
-        if socket.connected_peers().count() > 0 {
+        if socket.connected_peers().count() == 0 {
             *state = ServerState::Host;
             info!("hosting game");
         } else {
@@ -181,40 +177,19 @@ fn disconnected_handler(
     }
 }
 
-fn player_state_handler(
-    mut peer_ships: Query<(Entity, &Ship, &mut Transform, &PlayerPeerId)>,
-    mut reader: EventReader<PlayerState>,
-) {
-    for event in reader.read() {
-        if let Some((_, _, mut transform, _)) = peer_ships
-            .iter_mut()
-            .find(|(_, _, _, PlayerPeerId(id))| id == &event.id)
-        {
-            transform.translation = vec3(event.position.x, 0.0, event.position.y);
-            transform.rotation = Quat::from_rotation_y(event.rotation);
-        }
-    }
-}
-
-fn bullet_state_handler(
-    mut bullets: Query<(&mut Transform, &mut Bullet, &mut Visibility)>,
-    mut reader: EventReader<BulletState>,
-) {
-    for event in reader.read() {
-        for (mut transform, mut bullet, mut visibility) in bullets.iter_mut() {
-            if *visibility == Visibility::Hidden {
-                *visibility = Visibility::Visible;
-                transform.translation = vec3(event.position.x, 0.5, event.position.y);
-                bullet.velocity = event.velocity;
-                bullet.ttl = 2.0;
-                break;
-            }
-        }
-    }
-}
-
-fn enemy_state_handler(
-    mut enemies: Query<(&mut Ship, &Transform, &Visibility), With<Enemy>>,
-    mut reader: EventReader<EnemyState>,
-) {
-}
+// fn bullet_state_handler(
+//     mut bullets: Query<(&mut Transform, &mut Bullet, &mut Visibility)>,
+//     mut reader: EventReader<BulletState>,
+// ) {
+//     for event in reader.read() {
+//         for (mut transform, mut bullet, mut visibility) in bullets.iter_mut() {
+//             if *visibility == Visibility::Hidden {
+//                 *visibility = Visibility::Visible;
+//                 transform.translation = vec3(event.position.x, 0.5, event.position.y);
+//                 bullet.velocity = event.velocity;
+//                 bullet.ttl = 2.0;
+//                 break;
+//             }
+//         }
+//     }
+// }
